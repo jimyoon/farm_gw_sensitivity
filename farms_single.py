@@ -1,3 +1,4 @@
+# Load all necessary modules
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
 import os
@@ -13,6 +14,7 @@ import logging
 import sys
 
 
+## Read in external data
 water_constraints_by_farm = pd.read_csv('./data_inputs/hist_avail_bias_correction_20220223.csv') # Use baseline water demand data for warmup period
 water_constraints_by_farm = water_constraints_by_farm[['NLDAS_ID','sw_irrigation_vol']].reset_index()
 water_constraints_by_farm = water_constraints_by_farm['sw_irrigation_vol'].to_dict()
@@ -22,7 +24,7 @@ gw_cost_lookup = pd.read_csv('./data_inputs/Test_cost_curves_edit.csv')
 
 
 ## Read in PMP calibration files
-data_file=pd.ExcelFile("./data_inputs/MOSART_WM_PMP_inputs_20220323_GW.xlsx")
+data_file=pd.ExcelFile("./data_inputs/MOSART_WM_PMP_inputs_20220223_GW.xlsx")
 data_profit = data_file.parse("Profit")
 water_nirs=data_profit["nir_corrected"]
 nirs=dict(water_nirs)
@@ -36,11 +38,11 @@ farm_gw_sum['no_of_wells'] = farm_gw_sum['area_irrigated_gw'] / (750.0 * 750.0 *
 ## C.1. Preparing model indices and constraints:
 ids = range(538350) # total number of crop and nldas ID combinations
 farm_ids = range(53835) # total number of farm agents / nldas IDs
-with open('./data_inputs/crop_ids_by_farm.p', 'rb') as fp:
+with open('./data_inputs/archived/crop_ids_by_farm.p', 'rb') as fp:
     crop_ids_by_farm = pickle.load(fp)
-with open('./data_inputs/crop_ids_by_farm_and_constraint.p', 'rb') as fp:
+with open('./data_inputs/archived/crop_ids_by_farm_and_constraint.p', 'rb') as fp:
     crop_ids_by_farm_and_constraint = pickle.load(fp)
-with open('./data_inputs/max_land_constr_20220307_protocol2.p', 'rb') as fp:
+with open('./data_inputs/archived/max_land_constr_20220307_protocol2.p', 'rb') as fp:
     land_constraints_by_farm = pickle.load(fp)
 
 # Revise to account for removal of "Fodder_Herb category"
@@ -51,19 +53,19 @@ crop_ids_by_farm = crop_ids_by_farm_new
 crop_ids_by_farm_and_constraint = crop_ids_by_farm_new
 
 # Load gammas, net prices, etc
-with open('./data_inputs/gammas_total_20220323_protocol2.p', 'rb') as fp:
+with open('./data_inputs/archived/gammas_total_20220323_protocol2.p', 'rb') as fp:
     gammas_total = pickle.load(fp)
-with open('./data_inputs/net_prices_total_20220323_protocol2.p', 'rb') as fp:
+with open('./data_inputs/archived/net_prices_total_20220323_protocol2.p', 'rb') as fp:
     net_prices_total = pickle.load(fp)
-with open('./data_inputs/alphas_total_20220323_protocol2.p', 'rb') as fp:
+with open('./data_inputs/archived/alphas_total_20220323_protocol2.p', 'rb') as fp:
     alphas_total = pickle.load(fp)
-with open('./data_inputs/net_prices_sw_20220323_protocol2.p', 'rb') as fp:
+with open('./data_inputs/archived/net_prices_sw_20220323_protocol2.p', 'rb') as fp:
     net_prices_sw = pickle.load(fp)
-with open('./data_inputs/alphas_sw_20220323_protocol2.p', 'rb') as fp:
+with open('./data_inputs/archived/alphas_sw_20220323_protocol2.p', 'rb') as fp:
     alphas_sw = pickle.load(fp)
-with open('./data_inputs/gammas_sw_20220323_protocol2.p', 'rb') as fp:
+with open('./data_inputs/archived/gammas_sw_20220323_protocol2.p', 'rb') as fp:
     gammas_sw = pickle.load(fp)
-with open('./data_inputs/net_prices_gw_20220323_protocol2.p', 'rb') as fp:
+with open('./data_inputs/archived/net_prices_gw_20220323_protocol2.p', 'rb') as fp:
     net_prices_gw = pickle.load(fp)
 
 x_start_values=dict(enumerate([0.0]*3))
@@ -99,12 +101,13 @@ for key,value in gammas_total_subset.items():
     if value == 0:
         net_prices_total_subset[key] = -9999999999
 
-gw_list = ['gw7', 'gw6', 'gw14', 'gw13', 'gw12', 'gw3', 'gw11', 'gw10', 'gw9', 'gw17', 'gw16', 'gw15']
+# gw_list = ['gw7', 'gw6', 'gw14', 'gw13', 'gw12', 'gw3', 'gw11', 'gw10', 'gw9', 'gw17', 'gw16', 'gw15']
+gw_list = ['gw7']
 first_a = True
 for gw_run in gw_list:
     first_b = True
     year = 1
-    cum_gw_sum = 0
+    cumul_gw_sum = 0
     gw_multiplier = 1
     for t in range(50):
         fwm_s = ConcreteModel()
@@ -208,7 +211,7 @@ for gw_run in gw_list:
         except NameError:
             results_pd['gw_mult'] = 1
         try:
-            results_pd['gw_cumul_vol'] = cum_gw_sum
+            results_pd['gw_cumul_vol'] = cumul_gw_sum
         except NameError:
             results_pd['gw_cumul_vol'] = 0
         results_pd['gw_run'] = gw_run
@@ -226,12 +229,12 @@ for gw_run in gw_list:
         gw_sum['gw_vol_well'] = gw_sum['gw_vol'] * farms_per_grid / gw_sum['no_of_wells']
         gw_sum['gw_vol_well_km3'] = gw_sum['gw_vol_well'] * 1.23348e-6
         if first_b:
-            cum_gw_sum = gw_sum['gw_vol_well_km3'].values[0]
+            cumul_gw_sum = gw_sum['gw_vol_well_km3'].values[0]
         else:
-            cum_gw_sum += gw_sum['gw_vol_well_km3'].values[0]
+            cumul_gw_sum += gw_sum['gw_vol_well_km3'].values[0]
         i = 0
         for index, row in gw_cost_curves.iterrows():
-            if cum_gw_sum > row['volume']:
+            if cumul_gw_sum > row['volume']:
                 i = index
             else:
                 break
@@ -239,7 +242,7 @@ for gw_run in gw_list:
         if gw_cost_curves.loc[i][gw_run] != 0:  # JY temp to deal with zeros in groundwater cost curves (check in with Stephen)
             gw_multiplier = gw_cost_curves.loc[i][gw_run]
 
-        print(cum_gw_sum)
+        print(cumul_gw_sum)
         year += 1
         first_b = False
 

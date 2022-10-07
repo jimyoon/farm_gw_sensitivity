@@ -50,22 +50,22 @@ with open('./data_inputs/20220830_nirs.p', 'rb') as fp:  # dictionary that inclu
     nirs = pickle.load(fp)
 
 ##### Load external files for GW cost curves
-gw_cost_curves = pd.read_csv('./data_inputs/20220830_gw_cost_curves.csv')
-gw_cost_lookup = pd.read_csv('./data_inputs/20220830_gw_cost_lookup.csv')
+gw_cost_curves = pd.read_csv('./data_inputs/20221005_cost_curves/20221005_gw_cost_curves.csv')
+gw_cost_lookup = pd.read_csv('./data_inputs/20221005_cost_curves/20221005_gw_cost_lookup.csv')
 
 ##### Select farm/gw run options (these are currently implemented as higher-level options than the sensitivity inputs)
 farm_id = [15557]  # Pick the farm agent [0-53834] to use as a basis for the sensitivity analysis
-gw_cost_id = 'gw7'  # Pick the gw cost curve to use as a basis for the sensitivity analysis
+gw_cost_id = 'gw4'  # Pick the gw cost curve to use as a basis for the sensitivity analysis
 gw_area_well_sqm = 750 * 750  # Assumed groundwater area irrigated with a well in square meters
 gw_area_well_acres = gw_area_well_sqm * 0.000247105  # Assumed groundwater area irrigated with a well in acres
-no_of_years = 50  # The number of years (annual timesteps) to run simulation
+no_of_years = 100  # The number of years (annual timesteps) to run simulation
 farms_per_grid = 4412  # Assumed number of farms per NLDAS grid cell (50 km x 50 km) / 140 acres = 4412
 
 ##### For each representative farm, estimate # of groundwater wells (taking initial total groundwater area divided by 750m x 750m)
 aggregation_functions = {'area_irrigated_gw': 'sum'}
 farm_gw_sum = farms_master[['nldas','area_irrigated_gw']].groupby(['nldas']).aggregate(aggregation_functions)
 farm_gw_sum = farm_gw_sum.reset_index()
-farm_gw_sum['no_of_wells'] = farm_gw_sum['area_irrigated_gw'] / (gw_area_well_acres)  # .000247105 conversion from square meters to acres
+# farm_gw_sum['no_of_wells'] = farm_gw_sum['area_irrigated_gw'] / (gw_area_well_acres)  # .000247105 conversion from square meters to acres
 
 ##### Subset relevant data inputs for the specific farm/gw run option
 # subset crop ids
@@ -186,7 +186,7 @@ for t in range(no_of_years):
     fwm_s.scaling_factor[fwm_s.c6] = 0.01
 
     # create and run the optimization solver
-    opt = SolverFactory("ipopt", solver_io='nl')
+    opt = SolverFactory("gurobi", solver_io='python')
     results = opt.solve(fwm_s, keepfiles=False, tee=True)
     print(results.solver.termination_condition)
 
@@ -238,13 +238,17 @@ for t in range(no_of_years):
     aggregation_functions = {'gw_vol': 'sum', 'xs_gw': 'sum'}
     gw_sum = results_pd[['nldas','gw_vol','xs_gw']].groupby(['nldas']).aggregate(aggregation_functions)
     gw_sum = gw_sum.reset_index()
-    gw_sum = gw_sum.merge(farm_gw_sum[['nldas', 'no_of_wells']], how='left', on=['nldas'])
-    gw_sum['gw_vol_well'] = gw_sum['gw_vol'] * farms_per_grid / gw_sum['no_of_wells']
-    gw_sum['gw_vol_well_km3'] = gw_sum['gw_vol_well'] * 1.23348e-6
-    if first:
-        cumul_gw_sum = gw_sum['gw_vol_well_km3'].values[0]
+    # gw_sum = gw_sum.merge(farm_gw_sum[['nldas', 'no_of_wells']], how='left', on=['nldas'])
+    if t == 0: #### JY TEMP ####
+        gw_sum_0 = gw_sum['gw_vol']
     else:
-        cumul_gw_sum += gw_sum['gw_vol_well_km3'].values[0]
+        gw_sum_final = gw_sum['gw_vol']
+    # gw_sum['gw_vol_well'] = gw_sum['gw_vol'] * farms_per_grid / gw_sum['no_of_wells'] ### double check this w/ Stephen!
+    gw_sum['gw_vol_km3'] = gw_sum['gw_vol'] * 1.23348e-6
+    if first:
+        cumul_gw_sum = gw_sum['gw_vol_km3'].values[0]
+    else:
+        cumul_gw_sum += gw_sum['gw_vol_km3'].values[0]
     i = 0
     for index, row in gw_cost_curves.iterrows():
         if cumul_gw_sum > row['volume']:

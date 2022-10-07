@@ -48,24 +48,30 @@ with open('./data_inputs/20220830_net_prices_gw.p', 'rb') as fp:  # dictionary t
     net_prices_gw = pickle.load(fp)
 with open('./data_inputs/20220830_nirs.p', 'rb') as fp:  # dictionary that includes net irrigation requirements [0-538349] keyed on crop id [0-538349]
     nirs = pickle.load(fp)
+with open('./data_inputs/20221005_yields.p', 'rb') as fp:  # dictionary that includes crop yields [0-538349] keyed on crop id [0-538349]
+    yields = pickle.load(fp)
+with open('./data_inputs/20221005_prices.p', 'rb') as fp:  # dictionary that includes crop prices [0-538349] keyed on crop id [0-538349]
+    prices = pickle.load(fp)
+with open('./data_inputs/20221005_land_costs.p', 'rb') as fp:  # dictionary that includes crop land costs [0-538349] keyed on crop id [0-538349]
+    land_costs = pickle.load(fp)
 
 ##### Load external files for GW cost curves
-gw_cost_curves = pd.read_csv('./data_inputs/20220830_gw_cost_curves.csv')
-gw_cost_lookup = pd.read_csv('./data_inputs/20220830_gw_cost_lookup.csv')
+gw_cost_curves = pd.read_csv('./data_inputs/20221005_cost_curves/20221005_gw_cost_curves.csv')
+gw_cost_lookup = pd.read_csv('./data_inputs/20221005_cost_curves/20221005_gw_cost_lookup.csv')
 
 ##### Select farm/gw run options (these are currently implemented as higher-level options than the sensitivity inputs)
 farm_id = [15557]  # Pick the farm agent [0-53834] to use as a basis for the sensitivity analysis
-gw_cost_id = 'gw7'  # Pick the gw cost curve to use as a basis for the sensitivity analysis
-gw_area_well_sqm = 750 * 750  # Assumed groundwater area irrigated with a well in square meters
-gw_area_well_acres = gw_area_well_sqm * 0.000247105  # Assumed groundwater area irrigated with a well in acres
+gw_cost_id = 'gw4'  # Pick the gw cost curve to use as a basis for the sensitivity analysis
+# gw_area_well_sqm = 750 * 750  # Assumed groundwater area irrigated with a well in square meters
+# gw_area_well_acres = gw_area_well_sqm * 0.000247105  # Assumed groundwater area irrigated with a well in acres
 no_of_years = 50  # The number of years (annual timesteps) to run simulation
-farms_per_grid = 4412  # Assumed number of farms per NLDAS grid cell (50 km x 50 km) / 140 acres = 4412
+# farms_per_grid = 4412  # Assumed number of farms per NLDAS grid cell (50 km x 50 km) / 140 acres = 4412
 
 ##### For each representative farm, estimate # of groundwater wells (taking initial total groundwater area divided by 750m x 750m)
 aggregation_functions = {'area_irrigated_gw': 'sum'}
 farm_gw_sum = farms_master[['nldas','area_irrigated_gw']].groupby(['nldas']).aggregate(aggregation_functions)
 farm_gw_sum = farm_gw_sum.reset_index()
-farm_gw_sum['no_of_wells'] = farm_gw_sum['area_irrigated_gw'] / (gw_area_well_acres)  # .000247105 conversion from square meters to acres
+# farm_gw_sum['no_of_wells'] = farm_gw_sum['area_irrigated_gw'] / (gw_area_well_acres)  # .000247105 conversion from square meters to acres
 
 ##### Subset relevant data inputs for the specific farm/gw run option
 # subset crop ids
@@ -80,8 +86,12 @@ ids_subset_sorted = sorted(ids_subset)
 net_prices_land_subset = {key: net_prices_land[key] for key in ids_subset_sorted}
 net_prices_sw_subset = {key: net_prices_sw[key] for key in ids_subset_sorted}
 net_prices_gw_subset = {key: net_prices_gw[key] for key in ids_subset_sorted}
+alphas_total_subset = {key: alphas_total[key] for key in ids_subset_sorted}
 gammas_total_subset = {key: gammas_total[key] for key in ids_subset_sorted}
 nirs_subset = {key: nirs[key] for key in ids_subset_sorted}
+yields_subset = {key: yields[key] for key in ids_subset_sorted}
+prices_subset = {key: prices[key] for key in ids_subset_sorted}
+land_costs_subset = {key: land_costs[key] for key in ids_subset_sorted}
 max_land_constr_subset = {key: max_land_constr[key] for key in farm_id}
 sw_calib_constr_subset = {key: sw_calib_constr[key] for key in farm_id}
 gw_calib_constr_subset = {key: gw_calib_constr[key] for key in farm_id}
@@ -96,17 +106,23 @@ time_load = time.time()
 
 ###### AFTER TESTING CONVERT FOLLOWING INTO A FUNCTION FOR INCORPORATION INTO SALIB
 
-def farm_gw_model(nir_mult, sw_mult):  # currently only picking a couple variables to test (applied uniformly across all crops)
+def farm_gw_model(nir_mult, sw_mult, price_mult, alphas_mult, gammas_mult):  # currently only picking a few variables to test (applied uniformly across all crops)
 
     # apply sensitivity multipliers
-    # for key in gammas_total_subset:
-    #     gammas_total_subset[key] *= gammas_mult
+    for key in gammas_total_subset:
+        gammas_total_subset[key] *= gammas_mult
 
     for key in nirs_subset:
         nirs_subset[key] *= nir_mult
 
     for key in sw_calib_constr_subset:
         sw_calib_constr_subset[key] *= sw_mult
+
+    for key in net_prices_land_subset:
+        net_prices_land_subset[key] = ((yields_subset[key] * prices_subset[key]) - land_costs_subset[key] - alphas_total_subset[key]) * price_mult
+
+    for key in net_prices_land_subset:
+        net_prices_land_subset[key] = ((yields_subset[key] * prices_subset[key]) - land_costs_subset[key] - (alphas_total_subset[key] * alphas_mult))
 
     # initialize counters/trackers
     first = True
@@ -241,13 +257,13 @@ def farm_gw_model(nir_mult, sw_mult):  # currently only picking a couple variabl
         aggregation_functions = {'gw_vol': 'sum', 'xs_gw': 'sum'}
         gw_sum = results_pd[['nldas','gw_vol','xs_gw']].groupby(['nldas']).aggregate(aggregation_functions)
         gw_sum = gw_sum.reset_index()
-        gw_sum = gw_sum.merge(farm_gw_sum[['nldas', 'no_of_wells']], how='left', on=['nldas'])
-        gw_sum['gw_vol_well'] = gw_sum['gw_vol'] * farms_per_grid / gw_sum['no_of_wells']
-        gw_sum['gw_vol_well_km3'] = gw_sum['gw_vol_well'] * 1.23348e-6
+        # gw_sum = gw_sum.merge(farm_gw_sum[['nldas', 'no_of_wells']], how='left', on=['nldas'])
+        # gw_sum['gw_vol_well'] = gw_sum['gw_vol'] * farms_per_grid / gw_sum['no_of_wells']
+        gw_sum['gw_vol_km3'] = gw_sum['gw_vol'] * 1.23348e-6
         if first:
-            cumul_gw_sum = gw_sum['gw_vol_well_km3'].values[0]
+            cumul_gw_sum = gw_sum['gw_vol_km3'].values[0]
         else:
-            cumul_gw_sum += gw_sum['gw_vol_well_km3'].values[0]
+            cumul_gw_sum += gw_sum['gw_vol_km3'].values[0]
         i = 0
         for index, row in gw_cost_curves.iterrows():
             if cumul_gw_sum > row['volume']:
@@ -274,13 +290,19 @@ def farm_gw_model(nir_mult, sw_mult):  # currently only picking a couple variabl
 
 ##### Run sensitivity analysis using SALib
 
+# problem = {
+#     'num_vars': 2,
+#     'names': ['nir_mult','sw_mult','price_mult'],
+#     'bounds': [[0.8, 1.2], [0.8, 1.2], [0.8, 1.2]]
+# }
+
 problem = {
-    'num_vars': 2,
-    'names': ['nir_mult','sw_mult'],
-    'bounds': [[0.8, 1.2], [0.8, 1.2]]
+    'num_vars': 5,
+    'names': ['nir_mult','sw_mult', 'price_mult','alphas_mult','gammas_mult'],
+    'bounds': [[0.8, 1.2], [0.8, 1.2], [0.8, 1.2],[0.8, 1.2], [0.8, 1.2]]
 }
 
-param_values = saltelli.sample(problem, 2**6)
+param_values = saltelli.sample(problem, 1024)
 
 y = np.array([farm_gw_model(*params) for params in param_values])
 

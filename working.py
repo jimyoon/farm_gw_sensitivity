@@ -39,8 +39,8 @@ import pickle
 
 id_nldas = dict(zip(data_profit_short.index, data_profit_short.nldas))
 
-with open('nirs.p', 'wb') as handle:
-    pickle.dump(nirs, handle, protocol=pickle.HIGHEST_PROTOCOL)
+with open('20221005_land_costs.p', 'wb') as handle:
+    pickle.dump(dict_test, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 # Revise to account for removal of "Fodder_Herb category"
 crop_ids_by_farm_new = {}
@@ -48,5 +48,15 @@ for i in crop_ids_by_farm:
     crop_ids_by_farm_new[i] = crop_ids_by_farm[i][0:10]
 crop_ids_by_farm = crop_ids_by_farm_new
 
+with open('20221005_sobol_indices.p', 'wb') as handle:
+    pickle.dump(sobol_indices, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+
+with open('dict.csv', 'w') as csv_file:
+    writer = csv.writer(csv_file)
+    for key, value in alphas_total.items():
+       writer.writerow([key, value])
+
+(pd.DataFrame.from_dict(data=net_prices_land, orient='index')
+   .to_csv('dict_file_net_prices.csv', header=False))
 

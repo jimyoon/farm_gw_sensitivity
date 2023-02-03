@@ -11,6 +11,9 @@ from SALib.sample import saltelli
 from SALib.analyze import sobol
 import time
 
+##### Load Theis drawdown response module
+import Theis_pumping_with_deepening
+
 time_start = time.time()
 
 ##### Adjust pandas setting for debugging
@@ -67,6 +70,16 @@ gw_cost_id = 'gw4'  # Pick the gw cost curve to use as a basis for the sensitivi
 no_of_years = 50  # The number of years (annual timesteps) to run simulation
 # farms_per_grid = 4412  # Assumed number of farms per NLDAS grid cell (50 km x 50 km) / 140 acres = 4412
 
+##### Select groundwater cost curve generation options
+gw_curve_option = 'internal'  # GW cost curve option ("external" - pre-processed and pulled from external file, "internal" - generate on the fly)
+S = 0.2
+m = 50
+# K = 100 define in sensitivity analysis
+WL = 5
+R = 0
+IrrDepth = 10
+years = 80
+
 ##### For each representative farm, estimate # of groundwater wells (taking initial total groundwater area divided by 750m x 750m)
 aggregation_functions = {'area_irrigated_gw': 'sum'}
 farm_gw_sum = farms_master[['nldas','area_irrigated_gw']].groupby(['nldas']).aggregate(aggregation_functions)
@@ -83,49 +96,62 @@ for key, list_value in crop_ids_by_farm_subset.items():
 ids_subset_sorted = sorted(ids_subset)
 
 # subset various dictionaries;
-net_prices_land_subset = {key: net_prices_land[key] for key in ids_subset_sorted}
+net_prices_land_subset_og = {key: net_prices_land[key] for key in ids_subset_sorted}
 net_prices_sw_subset = {key: net_prices_sw[key] for key in ids_subset_sorted}
 net_prices_gw_subset = {key: net_prices_gw[key] for key in ids_subset_sorted}
 alphas_total_subset = {key: alphas_total[key] for key in ids_subset_sorted}
-gammas_total_subset = {key: gammas_total[key] for key in ids_subset_sorted}
-nirs_subset = {key: nirs[key] for key in ids_subset_sorted}
+gammas_total_subset_og = {key: gammas_total[key] for key in ids_subset_sorted}
+nirs_subset_og = {key: nirs[key] for key in ids_subset_sorted}
 yields_subset = {key: yields[key] for key in ids_subset_sorted}
 prices_subset = {key: prices[key] for key in ids_subset_sorted}
 land_costs_subset = {key: land_costs[key] for key in ids_subset_sorted}
 max_land_constr_subset = {key: max_land_constr[key] for key in farm_id}
-sw_calib_constr_subset = {key: sw_calib_constr[key] for key in farm_id}
+sw_calib_constr_subset_og = {key: sw_calib_constr[key] for key in farm_id}
 gw_calib_constr_subset = {key: gw_calib_constr[key] for key in farm_id}
 
 # set land net prices to large negative # for gammas that are zero (so PMP won't produce crops, zero gamma value indicates no observed land use)
-for key,value in gammas_total_subset.items():
+for key,value in gammas_total_subset_og.items():
     if value == 0:
-        net_prices_land_subset[key] = -9999999999
+        net_prices_land_subset_og[key] = -9999999999
 
 
 time_load = time.time()
 
 ###### AFTER TESTING CONVERT FOLLOWING INTO A FUNCTION FOR INCORPORATION INTO SALIB
 
-def farm_gw_model(nir_mult, sw_mult, price_mult, alphas_mult, gammas_mult):  # currently only picking a few variables to test (applied uniformly across all crops)
+def farm_gw_model(sw_mult, price_mult, gammas_mult, K):
+# def farm_gw_model(nir_mult, sw_mult, price_mult, gammas_mult, K):  # currently only picking a few variables to test (applied uniformly across all crops)
+
+    alphas_mult = 1  # JY temp to disable alphas in sensitivity analysis
+    nir_mult = 1 # JY temp to disable alphas in sensitivity analysis
+
+    # generate gw cost curves if gw_curve_option is "internal"
+    if gw_curve_option == 'internal':
+        gw_cost_curve_internal = Theis_pumping_with_deepening.Analytical(S, m, K, WL, R, IrrDepth, years)
 
     # apply sensitivity multipliers
+    gammas_total_subset = gammas_total_subset_og.copy()
     for key in gammas_total_subset:
         gammas_total_subset[key] *= gammas_mult
 
+    nirs_subset = nirs_subset_og.copy()
     for key in nirs_subset:
         nirs_subset[key] *= nir_mult
 
+    sw_calib_constr_subset = sw_calib_constr_subset_og.copy()
     for key in sw_calib_constr_subset:
         sw_calib_constr_subset[key] *= sw_mult
 
+    net_prices_land_subset = net_prices_land_subset_og.copy()
     for key in net_prices_land_subset:
         net_prices_land_subset[key] = ((yields_subset[key] * prices_subset[key]) - land_costs_subset[key] - alphas_total_subset[key]) * price_mult
 
-    for key in net_prices_land_subset:
-        net_prices_land_subset[key] = ((yields_subset[key] * prices_subset[key]) - land_costs_subset[key] - (alphas_total_subset[key] * alphas_mult))
+    # for key in net_prices_land_subset:
+    #     net_prices_land_subset[key] = ((yields_subset[key] * prices_subset[key]) - land_costs_subset[key] - (alphas_total_subset[key] * alphas_mult))
 
     # initialize counters/trackers
     first = True
+    depletion_first = True
     cumul_gw_sum = 0
     gw_multiplier = 1
 
@@ -265,47 +291,102 @@ def farm_gw_model(nir_mult, sw_mult, price_mult, alphas_mult, gammas_mult):  # c
         else:
             cumul_gw_sum += gw_sum['gw_vol_km3'].values[0]
         i = 0
-        for index, row in gw_cost_curves.iterrows():
-            if cumul_gw_sum > row['volume']:
-                i = index
-            else:
-                break
 
-        if gw_cost_curves.loc[i][gw_cost_id] != 0:  # JY temp to deal with zeros in groundwater cost curves (check in with Stephen)
-            gw_multiplier = gw_cost_curves.loc[i][gw_cost_id]
-        else:
-            gw_multiplier = 9999999999999  # Set groundwater cost to extremely high value to reflect groundwater exhaustion
+        if gw_curve_option == 'external':
+            for index, row in gw_cost_curves.iterrows():
+                if cumul_gw_sum > row['volume']:
+                    i = index
+                else:
+                    break
+            if gw_cost_curves.loc[i][gw_cost_id] != 0:  # JY temp to deal with zeros in groundwater cost curves (check in with Stephen)
+                gw_multiplier = gw_cost_curves.loc[i][gw_cost_id]
+            else:
+                gw_multiplier = 9999999999999  # Set groundwater cost to extremely high value to reflect groundwater exhaustion
+
+        elif gw_curve_option == 'internal':
+            for index in range(gw_cost_curve_internal[0][0].size):
+                if cumul_gw_sum > gw_cost_curve_internal[1][0][index]:
+                    i = index
+                else:
+                    break
+            if gw_cost_curve_internal[0][0][i] != 0:
+                gw_multiplier = gw_cost_curve_internal[0][0][i] / gw_cost_curve_internal[0][0][0]
+            else:
+                gw_multiplier = 9999999999999
+                if depletion_first:
+                    time_depletion = t
+                    depletion_first = False
+
         print(cumul_gw_sum)
         first = False
 
+    # Calculate
+    results_combined['profit_calc'] = ((price_mult * (results_combined['price'] * results_combined['yield']) -
+                                             results_combined['land_cost'] - results_combined['alphas_land']) * results_combined['xs_total']) \
+                                           - (0.5 * results_combined['gammas_total'] * results_combined['xs_total'] * results_combined['xs_total']) \
+                                           - (results_combined['net_prices_gw'] * results_combined['xs_gw']) \
+                                           - (results_combined['net_prices_sw'] * results_combined['xs_sw'])
+
+
     #  Calculate summary results (percent change in total irrigated area as an initial result)
-    aggregation_functions = {'xs_total': 'sum'}
-    summary_pd = results_combined[['nldas','year','xs_total']].groupby(['nldas','year']).aggregate(aggregation_functions)
+    aggregation_functions = {'xs_total': 'sum', 'profit_calc': 'sum'}
+    summary_pd = results_combined[['nldas','year','xs_total','profit_calc']].groupby(['nldas','year']).aggregate(aggregation_functions)
     summary_pd = summary_pd.reset_index()
     year_start = summary_pd.year.min()
     year_end = summary_pd.year.max()
     end_div_start_area = summary_pd[(summary_pd.year==year_end)].xs_total.values[0] / summary_pd[(summary_pd.year == year_start)].xs_total.values[0]
+    total_profit = summary_pd.profit_calc.sum()
 
-    return end_div_start_area
+    # Volume depleted (calculated from cost curves)
+    perc_vol_depleted = cumul_gw_sum / max(gw_cost_curve_internal[1][0].tolist())
+    if perc_vol_depleted > 1:
+        perc_vol_depleted = 1
+
+
+    return [end_div_start_area, total_profit, perc_vol_depleted, time_depletion]
 
 ##### Run sensitivity analysis using SALib
-
+#
 # problem = {
-#     'num_vars': 2,
-#     'names': ['nir_mult','sw_mult','price_mult'],
-#     'bounds': [[0.8, 1.2], [0.8, 1.2], [0.8, 1.2]]
+#     'num_vars': 5,
+#     'names': ['nir_mult','sw_mult','price_mult','alphas_mult','gammas_mult'],
+#     'bounds': [[0.8, 1.2], [0.8, 1.2], [0.8, 1.2], [0.8, 1.2], [0.8, 1.2]]
+# }
+#
+#
+# problem = {
+#     'num_vars': 5,
+#     'names': ['nir_mult','sw_mult', 'price_mult','K','gammas_mult'],
+#     'bounds': [[0.8, 1.2], [0.8, 1.2], [0.8, 1.2], [1, 100], [0.8, 1.2]]
 # }
 
 problem = {
-    'num_vars': 5,
-    'names': ['nir_mult','sw_mult', 'price_mult','alphas_mult','gammas_mult'],
-    'bounds': [[0.8, 1.2], [0.8, 1.2], [0.8, 1.2],[0.8, 1.2], [0.8, 1.2]]
+    'num_vars': 4,
+    'names': ['sw_mult','price_mult','gammas_mult','K'],
+    'bounds': [[0.8, 1.2], [0.8, 1.2], [0.8, 1.2], [1, 100]]
 }
 
-param_values = saltelli.sample(problem, 1024)
+# param_values = saltelli.sample(problem, 1024)
+# param_values = saltelli.sample(problem, 256)
+# param_values = saltelli.sample(problem, 256)
+param_values = saltelli.sample(problem, 64)
 
-y = np.array([farm_gw_model(*params) for params in param_values])
+# y = np.array([farm_gw_model(*params) for params in param_values])
+
+count = 0
+results_end_div_start_area = []
+results_total_profit = []
+results_perc_vol_depleted = []
+results_time_depletion = []
+for params in param_values:
+    results = farm_gw_model(*params)
+    results_end_div_start_area.append(results[0])
+    results_total_profit.append(results[1])
+    results_perc_vol_depleted.append(results[2])
+    results_time_depletion.append(results[3])
+    count += 1
 
 time_ensemble = time.time()
 
-sobol_indices = sobol.analyze(problem, y)
+results_array = np.array(results_total_profit)
+sobol_indices = sobol.analyze(problem, results_array)

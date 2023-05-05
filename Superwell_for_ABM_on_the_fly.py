@@ -40,14 +40,14 @@ def drawdown_theis(time, r, S, T, Q):
 def cost_curve(S, m, K, WL, R, IRR_DEPTH, NUM_YEARS, ELECTRICITY_RATE, INCREASE_WELL_DENSITY = False,  EXPONENTIAL_K_DECLINE = False):
     
     # constants used by function 
-    DAYS = 80 # days of pumping per year 
+    DAYS = 75 # days of pumping per year 
     DEPLETION_LIMIT = 0.95 
     EFFICIENCY = 0.7 # well efficiency
     WELL_LIFETIME = 30 # years
     INTEREST_RATE = 0.1 # loan rate in %
     MAINTENANCE_RATE = 0.7 # annual rate in %
     SPECIFIC_WEIGHT = 9800 # specific weight of water 
-    well_unit_cost = 100 # $/m
+    well_unit_cost = 150 # $/m
     MAXIMUM_INITIAL_SAT_THICKNESS = 100 # m 
     
     # user defined constants used by function 
@@ -57,7 +57,7 @@ def cost_curve(S, m, K, WL, R, IRR_DEPTH, NUM_YEARS, ELECTRICITY_RATE, INCREASE_
     RECHARGE = R # annual average recharge (m) 
 
     total_thickness = m # m 
-    grid_cell_area = 13.875 * 10 ** 6 # m^2 in 1/8th deg grid cell 
+    grid_cell_area = 13.875 * 13.875 * 10 ** 6 # m^2 in 1/8th deg grid cell 
     
     # depth to water 
     depth_to_peiz_surface = WL # m
@@ -113,7 +113,7 @@ def cost_curve(S, m, K, WL, R, IRR_DEPTH, NUM_YEARS, ELECTRICITY_RATE, INCREASE_
     
     # candidate well pumping rates (gallons per minute)
     Q_array_gpm = [50, 100, 150, 200, 250, 300, 350, 400, 500, 600, 700, 
-               800, 900, 1000, 1200, 1300, 1400, 1500]
+               800, 900, 1000]
 
     Q_array = np.zeros(len(Q_array_gpm))
     # convert candidate pumping rates to m^3/s

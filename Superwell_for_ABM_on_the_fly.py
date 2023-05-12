@@ -45,10 +45,10 @@ def cost_curve(S, m, K, WL, R, IRR_DEPTH, NUM_YEARS, ELECTRICITY_RATE, INCREASE_
     EFFICIENCY = 0.7 # well efficiency
     WELL_LIFETIME = 30 # years
     INTEREST_RATE = 0.1 # loan rate in %
-    MAINTENANCE_RATE = 0.7 # annual rate in %
+    MAINTENANCE_RATE = 0.07 # annual rate in %
     SPECIFIC_WEIGHT = 9800 # specific weight of water 
     well_unit_cost = 150 # $/m
-    MAXIMUM_INITIAL_SAT_THICKNESS = 100 # m 
+    MAXIMUM_INITIAL_SAT_THICKNESS = 150 # m 
     
     # user defined constants used by function 
     IRR_DEPTH = IRR_DEPTH
@@ -112,8 +112,9 @@ def cost_curve(S, m, K, WL, R, IRR_DEPTH, NUM_YEARS, ELECTRICITY_RATE, INCREASE_
     well_r = 0.5 * 0.28 # well diameter in m * 0.5
     
     # candidate well pumping rates (gallons per minute)
-    Q_array_gpm = [50, 100, 150, 200, 250, 300, 350, 400, 500, 600, 700, 
-               800, 900, 1000]
+    Q_array_gpm = np.linspace(50, 1000, 96)
+    #Q_array_gpm = [50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 
+    #           750, 800, 850, 900, 950, 1000]
 
     Q_array = np.zeros(len(Q_array_gpm))
     # convert candidate pumping rates to m^3/s
@@ -128,13 +129,13 @@ def cost_curve(S, m, K, WL, R, IRR_DEPTH, NUM_YEARS, ELECTRICITY_RATE, INCREASE_
     
     # find largest Q that meets screening criteria
     # screening criteria 
-    max_s_frac = .4     # max drawdown as % of available sat thickness
-    max_s_absolute = 35  # max drawdown in m
+    max_s_frac = .35     # max drawdown as % of available sat thickness
+    max_s_absolute = 50  # max drawdown in m
     
     Q_viability = np.zeros(len(Q_array))
     
     for i, s in enumerate(s_array):
-        if s/initial_sat_thickness < max_s_frac and s < max_s_absolute:
+        if s/initial_sat_thickness < max_s_frac and s < max_s_absolute and s != 0:
             Q_viability[i] = 1
     
     # skip grid cell if no pumping rates are viable
@@ -177,7 +178,7 @@ def cost_curve(S, m, K, WL, R, IRR_DEPTH, NUM_YEARS, ELECTRICITY_RATE, INCREASE_
         # check if drawdown constraints are violated by end of 100 day pumping period
         # if constraints violated: (1) first deepen well, (2) then reduce well pumping rate 
         
-        max_s_absolute_constraint = 40
+        max_s_absolute_constraint = 60
         max_s_frac_constraint = 0.4
         
         if s_total > max_s_absolute_constraint or s_total/sat_thickness_array[year] > max_s_frac_constraint:
@@ -185,8 +186,8 @@ def cost_curve(S, m, K, WL, R, IRR_DEPTH, NUM_YEARS, ELECTRICITY_RATE, INCREASE_
             # 1) first preference deepen well 
             if well_length_array[year] < total_thickness:
                 # update well length
-                if well_length_array[year] + 25 < total_thickness:
-                    well_length_array[year] = 25 + well_length_array[year]
+                if well_length_array[year] + 50 < total_thickness:
+                    well_length_array[year] = 50 + well_length_array[year]
                 
                 else:
                     remaining_length = total_thickness - well_length_array[year]
@@ -206,8 +207,9 @@ def cost_curve(S, m, K, WL, R, IRR_DEPTH, NUM_YEARS, ELECTRICITY_RATE, INCREASE_
             else:
                 s_array = np.zeros(len(Q_array))
                 u_array = np.zeros(len(Q_array))
+                time_Q_updated = 365/365 * 86400
                 for i, Q in enumerate(Q_array):
-                    s_array[i], u_array[i] = drawdown_theis(time_Q, well_r, S, T_array[year], Q)
+                    s_array[i], u_array[i] = drawdown_theis(time_Q_updated, well_r, S, T_array[year], Q)
             
                 Q_viability = np.zeros(len(Q_array))
                 
@@ -221,7 +223,10 @@ def cost_curve(S, m, K, WL, R, IRR_DEPTH, NUM_YEARS, ELECTRICITY_RATE, INCREASE_
                 
                 Q_indx_arr = np.where(Q_viability == 1) 
                 Q_indx = np.max(Q_indx_arr[:]) # index of largest viable Q
-                new_Q = Q_array[Q_indx] # new Q 
+                new_Q = Q_array[Q_indx] # new Q
+                if new_Q > Well_Q_array[0]:
+                    new_Q = Q_array[initial_Q_indx]
+                    
                 Well_Q_array[year] = new_Q # update Q for current YEAR 
                 
                 # calculate well area and new well roi 
@@ -323,7 +328,7 @@ def cost_curve(S, m, K, WL, R, IRR_DEPTH, NUM_YEARS, ELECTRICITY_RATE, INCREASE_
         maintenance_array = np.zeros((1, int(NUM_YEARS + WELL_LIFETIME)))
         
         # A) no deepening, initial_sat_thickness < MAXIMUM_INITIAL_SAT_THICKNESS
-        if initial_sat_thickness < MAXIMUM_INITIAL_SAT_THICKNESS:
+        if initial_sat_thickness <= MAXIMUM_INITIAL_SAT_THICKNESS:
             install_cost = well_unit_cost * well_length_array[0] # if no deepening, well install remains fixed 
             for year in range(pumping_years):
                 capital_cost_array[0, year] = num_wells[0] * install_cost * ((1 + INTEREST_RATE) ** WELL_LIFETIME) * INTEREST_RATE/((1 + INTEREST_RATE) ** WELL_LIFETIME-1)
@@ -474,7 +479,7 @@ def cost_curve(S, m, K, WL, R, IRR_DEPTH, NUM_YEARS, ELECTRICITY_RATE, INCREASE_
         else:
             pumping_rate_decline[year] = Well_Q_array[year]/Well_Q_array[0]
             
-    return unit_cost, cumulative_volume_all_wells/(10**9), DTW_array,  pumping_rate_decline, volume_all_wells/(10**9), total_cost_per_well, well_area_array, annual_capital_cost, unit_cost_per_acreft
+    return unit_cost, cumulative_volume_all_wells/(10**9), DTW_array,  pumping_rate_decline, volume_all_wells/(10**9), total_cost_per_well, well_area_array, annual_capital_cost, unit_cost_per_acreft, total_head, Well_Q_array
 
 #%% Plot distributions of results 
 

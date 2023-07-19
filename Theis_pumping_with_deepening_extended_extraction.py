@@ -5,7 +5,7 @@ import pandas as pd
 import math 
 import os 
 
-os.chdir('C:/Users/fere556/Documents/Farm_GW_Sensitivity/farm_gw_sensitivity-main')
+os.chdir('C:\\Users\\yoon644\\OneDrive - PNNL\\Documents\\PyProjects\\farmer_gw_archetypes')
 W_lookup = pd.read_csv('Theis_well_function_table.csv', header = "infer") 
 
 #W_lookup = pd.read_csv('./data_inputs/Theis_well_function_table.csv', header = "infer") 

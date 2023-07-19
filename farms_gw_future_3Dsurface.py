@@ -17,7 +17,8 @@ from itertools import product
 os.chdir('C:\\Users\\yoon644\\OneDrive - PNNL\\Documents\\PyProjects\\farmer_gw_archetypes')
 
 ##### Load Theis drawdown response module
-import Theis_pumping_with_deepening_extended_extraction
+# import Theis_pumping_with_deepening_extended_extraction
+import Superwell_for_ABM_on_the_fly
 
 time_start = time.time()
 
@@ -77,8 +78,9 @@ no_of_years = 50  # The number of years (annual timesteps) to run simulation
 # farms_per_grid = 4412  # Assumed number of farms per NLDAS grid cell (50 km x 50 km) / 140 acres = 4412
 
 ##### For each representative farm, estimate # of groundwater wells (taking initial total groundwater area divided by 750m x 750m)
-aggregation_functions = {'area_irrigated_gw': 'sum'}
-farm_gw_sum = farms_master[['nldas','area_irrigated_gw']].groupby(['nldas']).aggregate(aggregation_functions)
+farms_master['gw_irr_vol'] = farms_master['area_irrigated_gw'] * farms_master['nir_corrected'] * 1000
+aggregation_functions = {'gw_irr_vol': 'sum'}
+farm_gw_sum = farms_master[['nldas', 'gw_irr_vol']].groupby(['nldas']).aggregate(aggregation_functions)
 farm_gw_sum = farm_gw_sum.reset_index()
 # farm_gw_sum['no_of_wells'] = farm_gw_sum['area_irrigated_gw'] / (gw_area_well_acres)  # .000247105 conversion from square meters to acres
 
@@ -119,18 +121,21 @@ S = 0.25
 m = 110
 K = 10 # define in sensitivity analysis
 WL = 10
-R = 15
-IrrDepth = 12
-years = 80
-option = 'reduced_capacity'
-energy_cost = 0.15
+R = .15
+IRR_DEPTH = .3048
+NUM_YEARS = 80
+ELECTRICITY_RATE = .12
 
 ##### Load external files for GW cost curves
 gw_cost_curves = pd.read_csv('./data_inputs/20221005_cost_curves/20221005_gw_cost_curves.csv')
 gw_cost_lookup = pd.read_csv('./data_inputs/20221005_cost_curves/20221005_gw_cost_lookup.csv')
 
+##### Load external files for NLDAS cost curve attributes
+nldas_gw_attributes = pd.read_csv('./NLDAS_Cost_Curve_Attributes.csv')
+
 # Generate cost curve
-gw_cost_curve_internal = Theis_pumping_with_deepening_extended_extraction.Analytical(S, m, K, WL, R, IrrDepth, years, option, energy_cost)
+# gw_cost_curve_internal_test = Theis_pumping_with_deepening_extended_extraction.Analytical(S, m, K, WL, R, IrrDepth, years, option, energy_cost)
+gw_cost_curve_internal = Superwell_for_ABM_on_the_fly.cost_curve(S, m, K, WL, R, IRR_DEPTH, NUM_YEARS, ELECTRICITY_RATE)
 
 
 # Function-based workflow for incorporation in various sensitivity/ensemble experiments (e.g., SALib Sobol Analysis)
@@ -153,9 +158,10 @@ def farm_gw_model(hydro_ratio, econ_ratio, K, farm_id, m, R, gw_cost_curve_inter
     # farms_per_grid = 4412  # Assumed number of farms per NLDAS grid cell (50 km x 50 km) / 140 acres = 4412
 
     ##### For each representative farm, estimate # of groundwater wells (taking initial total groundwater area divided by 750m x 750m)
-    aggregation_functions = {'area_irrigated_gw': 'sum'}
-    farm_gw_sum = farms_master[['nldas', 'area_irrigated_gw']].groupby(['nldas']).aggregate(aggregation_functions)
-    farm_gw_sum = farm_gw_sum.reset_index()
+    # farms_master['gw_irr_vol'] = farms_master['area_irrigated_gw'] * farms_master['nir_corrected'] * 1000
+    # aggregation_functions = {'gw_irr_vol': 'sum'}
+    # farm_gw_sum = farms_master[['nldas', 'gw_irr_vol']].groupby(['nldas']).aggregate(aggregation_functions)
+    # farm_gw_sum = farm_gw_sum.reset_index()
     # farm_gw_sum['no_of_wells'] = farm_gw_sum['area_irrigated_gw'] / (gw_area_well_acres)  # .000247105 conversion from square meters to acres
 
     ##### Subset relevant data inputs for the specific farm/gw run option
@@ -194,10 +200,21 @@ def farm_gw_model(hydro_ratio, econ_ratio, K, farm_id, m, R, gw_cost_curve_inter
 
     # generate gw cost curves if more than one cost curve selected in sensitivity sweep
     if gw_curve_option == 'internal':
+
+        nldas_id = farms_master.iloc[farm_id]['nldas']
+        R = nldas_gw_attributes[(nldas_gw_attributes['NLDAS_ID'] == nldas_id.values[0])]['Recharge_usgs']
         R = R * numer_hydro_factor
-        gw_cost_curve_internal = Theis_pumping_with_deepening_extended_extraction.Analytical(S, m, K, WL, R, IrrDepth,
-                                                                                             years, option,
-                                                                                             energy_cost)  # S, m, K, WL, R, IrrDepth, years, extended, cost):
+        IRR_DEPTH_afy = farm_gw_sum.iloc[farm_id]['gw_irr_vol']
+        # IRR_DEPTH_afy = farms_master.iloc[farm_id]['area_irrigated_gw'] * farms_master.iloc[farm_id]['nir_corrected'] * 1000
+        IRR_DEPTH_m3 = IRR_DEPTH_afy * 1233.48  # convert from acre-ft/yr to cubic meters/yr
+        IRR_DEPTH = IRR_DEPTH_m3.values[0] / nldas_gw_attributes[(nldas_gw_attributes['NLDAS_ID'] == nldas_id.values[0])]['Area'].values[0] # convert to m/year
+        # gw_cost_curve_internal = Theis_pumping_with_deepening_extended_extraction.Analytical(S, m, K, WL, R, IrrDepth,
+        #                                                                                      years, option,
+        #                                                                                      energy_cost)  # S, m, K, WL, R, IrrDepth, years, extended, cost):
+        gw_cost_curve_internal = Superwell_for_ABM_on_the_fly.cost_curve(S, m, K, WL, R, IRR_DEPTH, NUM_YEARS, ELECTRICITY_RATE)
+
+    if not gw_cost_curve_internal:
+        return [np.nan] * 22
 
     # apply sensitivity multipliers
     gammas_total_subset = gammas_total_subset_og.copy()
@@ -214,8 +231,8 @@ def farm_gw_model(hydro_ratio, econ_ratio, K, farm_id, m, R, gw_cost_curve_inter
 
     net_prices_land_subset = net_prices_land_subset_og.copy()
     for key in net_prices_land_subset:
-        net_prices_land_subset[key] = ((yields_subset[key] * prices_subset[key]) - land_costs_subset[key] -
-                                       alphas_total_subset[key]) * numer_econ_factor
+        net_prices_land_subset[key] = ((yields_subset[key] * prices_subset[key] * numer_econ_factor) - land_costs_subset[key] -
+                                       alphas_total_subset[key])
 
     #### Added by SF
     keys = net_prices_gw_subset.keys()
@@ -231,6 +248,7 @@ def farm_gw_model(hydro_ratio, econ_ratio, K, farm_id, m, R, gw_cost_curve_inter
     depletion_first = True
     cumul_gw_sum = 0
     gw_multiplier = 1
+    gw_cost_added = 0
     gw_availability_multiplier = 1  # SF added for reduced GW availability cost curve option
     time_depletion = 0  # SF added to reset time to depletion
 
@@ -246,7 +264,15 @@ def farm_gw_model(hydro_ratio, econ_ratio, K, farm_id, m, R, gw_cost_curve_inter
             fwm_s.net_prices_gw = Param(fwm_s.ids, initialize=net_prices_gw_sensitivity, mutable=True)
         else:
             net_prices_gw_subset_update = net_prices_gw_sensitivity.copy()
-            net_prices_gw_subset_update.update((x, y * gw_multiplier) for x, y in net_prices_gw_subset_update.items())
+
+            for key in net_prices_gw_subset_update:
+                net_prices_gw_temp = net_prices_gw_subset_update[key]
+                nir_temp = nirs_subset[key]
+                gw_cost_temp = (-1.0 * net_prices_gw_temp) / (nir_temp * 1000.0)
+                gw_cost_updated_temp = gw_cost_temp + (gw_cost_added * 1233.48) # 1233.48 converts $/m3 from cost curves to $/acre-ft used in PMP
+                net_prices_gw_updated_temp = -1.0 * gw_cost_updated_temp * nir_temp * 1000.0
+                net_prices_gw_subset_update[key] = net_prices_gw_updated_temp
+            # net_prices_gw_subset_update.update((x, y * gw_multiplier) for x, y in net_prices_gw_subset_update.items())
             fwm_s.net_prices_gw = Param(fwm_s.ids, initialize=net_prices_gw_subset_update, mutable=True)
         fwm_s.farm_ids = Set(initialize=farm_id)
         fwm_s.crop_ids_by_farm = Set(fwm_s.farm_ids, initialize=crop_ids_by_farm_subset)
@@ -362,8 +388,10 @@ def farm_gw_model(hydro_ratio, econ_ratio, K, farm_id, m, R, gw_cost_curve_inter
 
         try:
             results_pd['gw_mult'] = gw_multiplier
+            results_pd['gw_cost_added'] = gw_cost_added
         except NameError:
-            results_pd['gw_mult'] = 1
+            # results_pd['gw_mult'] = 1
+            results_pd['gw_cost_added'] = 0
 
         try:
             results_pd['gw_available'] = gw_availability_multiplier
@@ -404,45 +432,52 @@ def farm_gw_model(hydro_ratio, econ_ratio, K, farm_id, m, R, gw_cost_curve_inter
             if gw_cost_curves.loc[i][
                 gw_cost_id] != 0:  # JY temp to deal with zeros in groundwater cost curves (check in with Stephen)
                 gw_multiplier = gw_cost_curves.loc[i][gw_cost_id]
+                gw_cost_added = gw_cost_curves.loc[i][gw_cost_id]
             else:
-                gw_multiplier = 9999999999999  # Set groundwater cost to extremely high value to reflect groundwater exhaustion
+                gw_cost_added = 9999999999999  # Set groundwater cost to extremely high value to reflect groundwater exhaustion
 
         elif gw_curve_option == 'internal':
-            for index in range(gw_cost_curve_internal[0][0].size):
-                if cumul_gw_sum > gw_cost_curve_internal[1][0][
+            for index in range(gw_cost_curve_internal[0].size):
+                if cumul_gw_sum > gw_cost_curve_internal[1][
                     index]:  # closest match for cum pumped vol cost curve bin
                     i = index
                 else:
                     break
-            if gw_cost_curve_internal[0][0][i] != 0:
-                gw_multiplier = gw_cost_curve_internal[0][0][i] / gw_cost_curve_internal[0][0][
+            if gw_cost_curve_internal[0][i] != 0:
+                gw_cost_added = gw_cost_curve_internal[0][i] - gw_cost_curve_internal[0][
+                0]  # unit cost divided by starting unit cost
+                gw_multiplier = gw_cost_curve_internal[0][i] / gw_cost_curve_internal[0][
                     0]  # unit cost divided by starting unit cost
+                gw_availability_multiplier = gw_cost_curve_internal[3][i]
 
             else:
+                gw_cost_added = 9999999999999
                 gw_multiplier = 9999999999999
                 if depletion_first:
                     time_depletion = t
                     depletion_first = False
 
-            if option == 'reduced_capacity':  # SF added for reduced capacity option
-                gw_availability_multiplier = gw_cost_curve_internal[3][i] / gw_cost_curve_internal[3][
-                    0]  # update with index for gw mult
+
+            # if option == 'reduced_capacity':  # SF added for reduced capacity option
+            #     gw_availability_multiplier = gw_cost_curve_internal[3][i] / gw_cost_curve_internal[3][
+            #         0]  # update with index for gw mult
 
         print(cumul_gw_sum)
         first = False
 
     # Calculate
+    results_combined['net_prices_gw_updated'] = -1.0 * (results_combined['gw_cost'] + (gw_cost_added * 1233.48)) * results_combined['nir_corrected'] * 1000.0
     results_combined['profit_calc'] = ((numer_econ_factor * (results_combined['price'] * results_combined['yield']) -
                                         results_combined['land_cost'] - results_combined['alphas_land']) *
                                        results_combined['xs_total']) \
                                       - (0.5 * results_combined['gammas_total'] * results_combined['xs_total'] *
                                          results_combined['xs_total']) \
-                                      - (results_combined['net_prices_gw'] * results_combined['xs_gw']) \
+                                      - (results_combined['net_prices_gw_updated'] * results_combined['xs_gw']) \
                                       - (results_combined['net_prices_sw'] * results_combined['xs_sw'])
 
     #  Calculate summary results (percent change in total irrigated area as an initial result)
-    aggregation_functions = {'xs_total': 'sum', 'profit_calc': 'sum', 'gw_vol':'sum'}
-    summary_pd = results_combined[['nldas', 'year', 'xs_total', 'profit_calc','gw_vol']].groupby(['nldas', 'year']).aggregate(
+    aggregation_functions = {'xs_total': 'sum', 'profit_calc': 'sum', 'gw_vol':'sum','gw_cost_added':'mean', 'gw_available':'mean'}
+    summary_pd = results_combined[['nldas', 'year', 'xs_total', 'profit_calc','gw_vol','gw_cost_added','gw_available']].groupby(['nldas', 'year']).aggregate(
         aggregation_functions)
     summary_pd = summary_pd.reset_index()
     year_start = summary_pd.year.min()
@@ -472,9 +507,15 @@ def farm_gw_model(hydro_ratio, econ_ratio, K, farm_id, m, R, gw_cost_curve_inter
 
 
     # Volume depleted (calculated from cost curves)
-    perc_vol_depleted = cumul_gw_sum / max(gw_cost_curve_internal[1][0].tolist())
+    grid_cell_area = 13.875 * 13.875 * 10 ** 6 # from Stephen's script -- eventually replace with actual cell area
+    available_volume = (m - WL) *  grid_cell_area * S
+    perc_vol_depleted = cumul_gw_sum * (10 ** 9) / available_volume
+    # perc_vol_depleted = cumul_gw_sum * (10**9) / max(gw_cost_curve_internal[1].tolist())
+
     if perc_vol_depleted > 1:
         perc_vol_depleted = 1
+
+    # return summary_pd
 
     return [end_div_start_area, total_profit, perc_vol_depleted, time_depletion, cumul_gw_sum, acres_grown_total,
             acres_grown_mean, acres_grown_mean_vs_start, end_div_start_profit, min_acres_grown, max_acres_grown,
@@ -483,23 +524,36 @@ def farm_gw_model(hydro_ratio, econ_ratio, K, farm_id, m, R, gw_cost_curve_inter
             med_gw_vol_yr, mean_excl0_gw_vol_yr]
 
 # Vaired parameters for ABM sensitivity
-
-
-# Vaired parameters for ABM sensitivity
 hydro_ratio = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5]
 econ_ratio = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5]
-K_val = [1, 100]
+# K_val = [1, 100]
+K_val = [1]
 m_val = [m] # default in one m from single cost curve as defined in 'Cost curve inputs'
 single_cost_curve = 'false'
 
-num_farms = 2
-farms = [15557, 36335]
+# num_farms = 3
+num_farms = 20
+# farms = [15557, 36335]  #15557 OG (x200y128 - nearly all corn and fodder grass / gw cost 10% net price), 36335 CA (x32y103 - majority misc crop / gw cost 30% net price), 28380  (x273y77 - major oil crop, secondary fiber, corn / gw cost 20% net price)
+# farms = [36335, 15557, 28380]
+farms = [36335, 15557, 28380, 37679, 40253, 41271, 42988, 40367, 46491, 16943, 19065, 13736, 13111, 12790, 27673, 28676, 29133, 28238, 28520, 27660]
 
 # Create array of ABM sensitivity parameter combinations using parameter lists defined in 'Varied parameters for ABM sensitivity'
 combinations = len(hydro_ratio) * len(econ_ratio) * len(K_val) * len(m_val) * len(farms)
 cases = list(product(hydro_ratio, econ_ratio, K_val, m_val, farms))
 
 cases_df = pd.DataFrame(data = cases.copy(), columns = ['hydro_ratio', 'econ_ratio', 'K_val', 'm_val', 'farm'])
+
+# Replace arbitrary K values with those from NLDAS data
+cases_df['K_val_data'] = 0
+for f in farms:
+    nldas_id = farms_master.iloc[f]['nldas']
+    K_low = nldas_gw_attributes[(nldas_gw_attributes['NLDAS_ID'] == nldas_id)]['K'].values[0]
+    K_high = nldas_gw_attributes[(nldas_gw_attributes['NLDAS_ID'] == nldas_id)]['K_hi'].values[0]
+    cases_df.loc[(cases_df.farm == f) & (cases_df.K_val == 1), 'K_val_data'] = K_high
+    # cases_df.loc[(cases_df.farm == f) & (cases_df.K_val == 100), 'K_val_data'] = K_high
+
+# Enforce minimum K for viable pumping
+cases_df.loc[(cases_df.K_val_data < 0.10), 'K_val_data'] = 0.10
 
 ### Create Output arrays to store data
 results_end_div_start_area = []
@@ -537,7 +591,7 @@ count = 0
 for case in range(combinations):
     print('!!JY!! run #: ' + str(case))
     results = farm_gw_model(cases_df.hydro_ratio[case], cases_df.econ_ratio[case],
-                            cases_df.K_val[case], cases_df.farm[case], cases_df.m_val[case], R, gw_cost_curve_internal)
+                            cases_df.K_val_data[case], cases_df.farm[case], cases_df.m_val[case], R, gw_cost_curve_internal)
 
     results_end_div_start_area.append(results[0])
     results_total_profit.append(results[1])
@@ -579,6 +633,7 @@ cases_df['max_minus_min_acres_grown'] = max_minus_min_acres_grown
 cases_df['med_acres_grown'] = med_acres_grown
 cases_df['min_annual_profit'] = min_annual_profit
 cases_df['max_annual_profit'] = max_annual_profit
+cases_df['min_div_max_annual_profit'] = cases_df['min_annual_profit'] / cases_df['max_annual_profit']
 cases_df['max_minus_min_annual_profit'] = max_minus_min_annual_profit
 cases_df['med_annual_profit'] = med_annual_profit
 cases_df['max_gw_vol_yr'] = max_gw_vol_yr
@@ -587,7 +642,8 @@ cases_df['max_minus_min_gw_vol_yr'] = max_minus_min_gw_vol_yr
 cases_df['med_gw_vol_yr'] = med_gw_vol_yr
 cases_df['mean_excl0_gw_vol_yr'] = mean_excl0_gw_vol_yr
 
-cases_df.to_csv('20230504_cases_df.csv')
+cases_df.to_csv('20230623_cases_df.csv')
+
 
 cases_df_K1_OG = cases_df[(cases_df.K_val==1) & (cases_df.farm==15557)]
 cases_df_K100_OG = cases_df[(cases_df.K_val==100) & (cases_df.farm==15557)]
@@ -595,16 +651,26 @@ cases_df_K100_OG = cases_df[(cases_df.K_val==100) & (cases_df.farm==15557)]
 cases_df_K1_CA = cases_df[(cases_df.K_val==1) & (cases_df.farm==36335)]
 cases_df_K100_CA = cases_df[(cases_df.K_val==100) & (cases_df.farm==36335)]
 
-x = cases_df_K1_OG['hydro_ratio']
-y = cases_df_K1_OG['econ_ratio']
-z = cases_df_K1_OG['perc_vol_depleted']
+cases_df_K1_ME = cases_df[(cases_df.K_val==1) & (cases_df.farm==28380)]
+cases_df_K100_ME = cases_df[(cases_df.K_val==100) & (cases_df.farm==28380)]
 
-x = cases_df_K100_OG['hydro_ratio']
-y = cases_df_K100_OG['econ_ratio']
-z = cases_df_K100_OG['perc_vol_depleted']
+x = cases_df_K1_ME['hydro_ratio']
+y = cases_df_K1_ME['econ_ratio']
+z = cases_df_K1_ME['min_div_max_annual_profit']
 
-z_diff = cases_df_K1_OG['perc_vol_depleted'].reset_index() - cases_df_K100_OG['perc_vol_depleted'].reset_index()
-z = z_diff['perc_vol_depleted']
+x = cases_df_K100_ME['hydro_ratio']
+y = cases_df_K100_ME['econ_ratio']
+z = cases_df_K100_ME['min_div_max_annual_profit']
+
+z_diff = cases_df_K1_ME['min_div_max_annual_profit'].reset_index() - cases_df_K100_ME['min_div_max_annual_profit'].reset_index()
+z = z_diff['min_div_max_annual_profit']
+
+###############
+
+cases_df_subset = cases_df[(cases_df.K_val==1) & (cases_df.farm==19065)]
+x = cases_df_subset['hydro_ratio']
+y = cases_df_subset['econ_ratio']
+z = cases_df_subset['cumul_gw']
 
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
@@ -614,3 +680,17 @@ from matplotlib import cm
 fig = plt.figure(figsize=(5,4))
 ax = fig.add_subplot(111, projection='3d')
 surf = ax.plot_trisurf(x, y, z, cmap= cm.coolwarm, linewidth=0.2)
+
+ax.set_zlim((0.5,2.3))
+
+################################################
+
+results_temp = farm_gw_model(1.4, 0.7, 100, 15557, 110, R, gw_cost_curve_internal)
+results_temp.gw_vol.plot(ylim=(0,40000))
+
+# farms = [15557, 36335]  #15557 OG (x200y128 - nearly all corn and fodder grass / gw cost 10% net price), 36335 CA (x32y103 - majority misc crop / gw cost 30% net price), 28380  (x273y77 - major oil crop, secondary fiber, corn / gw cost 20% net price)
+# CA alts (x33y100 - 37679; x35y100 - 40253; x36y98 - 41271; x38y97 - 42988; x35y97 - 40367; x45y90 - 46491)
+# OG alts (x208y124 - 16943; x219y126 - 19065; x189y97 - 13736; x185y89 - 13111; x183y76 - 12790)
+# ME alts (x269y76 - 27673; x275y72 - 28676; x278y88 - 29133; x272y87 - 28238; x274y66 - 28520; x269y63 - 27660)
+
+

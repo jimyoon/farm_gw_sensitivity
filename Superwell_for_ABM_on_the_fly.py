@@ -140,7 +140,8 @@ def cost_curve(S, m, K, WL, R, IRR_DEPTH, NUM_YEARS, ELECTRICITY_RATE, INCREASE_
     
     # skip grid cell if no pumping rates are viable
     if np.sum(Q_viability) == 0:
-        return print("Cost curve not produced, no viable pumping rates")
+        print("Cost curve not produced, no viable pumping rates")
+        return None
     
     initial_Q_indx_arr = np.where(Q_viability == 1) 
     initial_Q_indx = np.max(initial_Q_indx_arr[:]) # index of largest viable Q

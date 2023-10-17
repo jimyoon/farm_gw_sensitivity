@@ -345,7 +345,7 @@ def farm_gw_model(hydro_ratio, econ_ratio, K, farm_id, m, R, gw_cost_curve_inter
         # opt = SolverFactory("ipopt", solver_io='nl')
         opt = SolverFactory("gurobi", solver_io='python')
         # try:
-        results = opt.solve(fwm_s, keepfiles=False, tee=True)
+        results = opt.solve(fwm_s, keepfiles=True, tee=True)
         print(results.solver.termination_condition)
 
         # except ValueError:
@@ -532,10 +532,11 @@ m_val = [m] # default in one m from single cost curve as defined in 'Cost curve 
 single_cost_curve = 'false'
 
 # num_farms = 3
-num_farms = 20
+num_farms = 1
 # farms = [15557, 36335]  #15557 OG (x200y128 - nearly all corn and fodder grass / gw cost 10% net price), 36335 CA (x32y103 - majority misc crop / gw cost 30% net price), 28380  (x273y77 - major oil crop, secondary fiber, corn / gw cost 20% net price)
 # farms = [36335, 15557, 28380]
-farms = [36335, 15557, 28380, 37679, 40253, 41271, 42988, 40367, 46491, 16943, 19065, 13736, 13111, 12790, 27673, 28676, 29133, 28238, 28520, 27660]
+# farms = [36335, 15557, 28380, 37679, 40253, 41271, 42988, 40367, 46491, 16943, 19065, 13736, 13111, 12790, 27673, 28676, 29133, 28238, 28520, 27660]
+farms = [37799]
 
 # Create array of ABM sensitivity parameter combinations using parameter lists defined in 'Varied parameters for ABM sensitivity'
 combinations = len(hydro_ratio) * len(econ_ratio) * len(K_val) * len(m_val) * len(farms)

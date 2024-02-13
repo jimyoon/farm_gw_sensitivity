@@ -541,7 +541,8 @@ def solve_farm(fid: int):
         nldas_id = farms_master.iloc[f]['nldas']
         K_low = nldas_gw_attributes[(nldas_gw_attributes['NLDAS_ID'] == nldas_id)]['K'].values[0]
         K_high = nldas_gw_attributes[(nldas_gw_attributes['NLDAS_ID'] == nldas_id)]['K_hi'].values[0]
-        cases_df.loc[(cases_df.farm == f) & (cases_df.K_val == 1), 'K_val_data'] = K_high
+        K_de_graaf = nldas_gw_attributes[(nldas_gw_attributes['NLDAS_ID'] == nldas_id)]['K_de_graaf'].values[0]
+
         # cases_df.loc[(cases_df.farm == f) & (cases_df.K_val == 100), 'K_val_data'] = K_high
 
     # Enforce minimum K for viable pumping

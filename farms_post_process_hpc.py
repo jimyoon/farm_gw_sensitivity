@@ -9,6 +9,7 @@ pd.set_option('display.max_rows', None)
 
 os.chdir('C:\\Users\\yoon644\\OneDrive - PNNL\\Documents\\PyProjects\\farmer_gw_archetypes')
 
+###### Load in ensemble results
 sens_results_all = pd.read_csv("./sensitivity_output/farm_gw_ensemble_20231018_K_low.csv")
 metric = 'cumul_gw'  # 'total_profit'
 sens_results = sens_results_all[['hydro_ratio','econ_ratio','farm', metric]]
@@ -20,6 +21,7 @@ econ_ratios = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5]
 hydro_slope_avg = []
 econ_slope_avg = []
 
+###### Code segment to calculate hydro and econ slopes
 farm_status = 0
 for farm in farms:
     hydro_slope_sum = 0
@@ -51,7 +53,7 @@ for farm in farms:
     econ_slope_avg.append(econ_slope_sum / count)
     farm_status += 1
 
-########### VERSION 2
+########### Code segment to calculate hydro and econ slopes (alt version for improved speed)
 farm_status = 0
 for farm in farms:
     hydro_slope_sum = 0
@@ -88,7 +90,7 @@ nldas = pd.read_csv('./data_inputs/nldas_farms_subset.csv')
 
 farms_slope_df = pd.merge(farms_slope_df, nldas, how="left", left_on="farms", right_on="index")
 
-# Calculate hydrologic versus economic "control" ratio (cumulative gw pumping version)
+####### Code segment to calculate hydrologic versus economic "control" ratio (cumulative gw pumping version)
 
 farms_slope_df["control_ratio"] = farms_slope_df["econ_slope_avg"] / farms_slope_df["hydro_slope_avg"]
 farms_slope_df.loc[farms_slope_df['hydro_slope_avg'] > -.01, "control_ratio"] = 0
@@ -101,12 +103,12 @@ farms_slope_df_subset.loc[farms_slope_df_subset['control_ratio'] < 0, "control_r
 
 farms_slope_df_subset.to_csv('farms_slope_df_cumulgw_lowK_subset.csv')
 
-# Calculate hydrologic versus economic "control" ratio (total ag profit version)
+####### Code segment to calculate hydrologic versus economic "control" ratio (total ag profit version)
 
 farms_slope_df["control_ratio"] = abs(farms_slope_df["econ_slope_avg"]) / abs(farms_slope_df["hydro_slope_avg"])
 farms_slope_df.to_csv('farms_slope_df_profit.csv')
 
-# Calculate change in average groundwater pumping between high and low K
+####### Calculate change in average groundwater pumping between high and low K
 results_lowk = pd.read_csv("./sensitivity_output/farm_gw_ensemble_20231018_K_low.csv")
 results_highk = pd.read_csv("./sensitivity_output/farm_gw_ensemble_20230919.csv")
 

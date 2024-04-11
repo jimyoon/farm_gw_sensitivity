@@ -27,7 +27,7 @@ logging.getLogger('pyomo').setLevel(logging.ERROR)
 
 ##### Travis: Lines 19-92 all load external data and set variables that are used for all runs -- need to find strategy to do this only once when deployed on HPC
 ##### Travis: Need to modify this such that it can be deployed on HPC
-os.chdir('C:/Users/fere556/Desktop/Farm_GW_Analysis') # comment out for HPC implementation
+# os.chdir('C:/Users/fere556/Desktop/Farm_GW_Analysis') # comment out for HPC implementation
 
 ##### Load Theis drawdown response module
 import Superwell_for_ABM_on_the_fly
@@ -125,7 +125,7 @@ def solve_farm(fid: int):
     ##### Load external files for NLDAS cost curve attributes
     nldas_gw_attributes = pd.read_csv('NLDAS_Cost_Curve_Attributes.csv')
 
-    ##### Travis: Lines 136-XXX define the method for running the farm-groundwater model
+    ##### Travis: Lines 130-694 define the method for running the farm-groundwater model
     # Function-based workflow for incorporation in various sensitivity/ensemble experiments (e.g., SALib Sobol Analysis)
     def farm_gw_model(hydro_ratio, econ_ratio, K_scenario, gamma_scenario, farm_id, gw_cost_curve_internal):
         
@@ -162,6 +162,7 @@ def solve_farm(fid: int):
         for key, list_value in crop_ids_by_farm_subset.items():  # creates list where first entry is farm_id and each follow entry is a crop index which is
             for value in list_value:  # row in farms_master DataFrame
                 ids_subset.append(value)
+                
         ids_subset_sorted = sorted(ids_subset)
 
         # subset various dictionaries;
@@ -383,9 +384,9 @@ def solve_farm(fid: int):
             fwm_s.scaling_factor[fwm_s.c6] = 0.01
 
             # create and run the optimization solver
-            #opt = SolverFactory("ipopt", solver_io='nl') # USE this for HPC 
+            opt = SolverFactory("ipopt", solver_io='nl') # USE this for HPC 
 
-            opt = SolverFactory('gurobi', solver_io='python') # Stephen used for testing 
+            #opt = SolverFactory('gurobi', solver_io='python') # Stephen used for testing 
             #opt = SolverFactory('appsi_highs')#, solver_io='python')
             #opt = SolverFactory('asl:highs')#, solver_io='python')
             #opt.options["presolve"] = "on"
@@ -527,7 +528,7 @@ def solve_farm(fid: int):
                     # update WL - Stephen added 
                     WL_timeseries.append(max(gw_cost_curve_internal[2]))
 
-                    # update GW cost - Stephen added - what cost to assign to output timeseries when no GW is available? 0 for now 
+                    # update GW cost - Stephen added - what cost to assign to output timeseries when no GW is available? 999 for now 
                     GW_cost_timeseries.append(999)
                     
                     # update GW added cost - Stephen added 
@@ -546,8 +547,8 @@ def solve_farm(fid: int):
                                            results_combined['xs_total']) \
                                           - (0.5 * results_combined['gammas_total'] * results_combined['xs_total'] *
                                              results_combined['xs_total']) \
-                                          - (results_combined['net_prices_gw_updated'] * results_combined['xs_gw']) \
-                                          - (results_combined['net_prices_sw'] * results_combined['xs_sw'])
+                                          + (results_combined['net_prices_gw_updated'] * results_combined['xs_gw']) \
+                                          + (results_combined['net_prices_sw'] * results_combined['xs_sw'])
 
         #### Calculate summary results (percent change in total irrigated area as an initial result)
         # In original version, these were only single-value outputs. For the updated version, 
@@ -677,7 +678,7 @@ def solve_farm(fid: int):
         # Optional: Crop-specific annual profit outputs 
         #.......
         
-        # Stephen - Add additional output columns, in updated script the new metrics will be lists of annual values   
+        # Stephen - Added additional output columns
         return [end_div_start_area, total_profit, perc_vol_depleted, time_depletion, cumul_gw_sum, acres_grown_total,
                 acres_grown_mean, acres_grown_mean_vs_start, end_div_start_profit, min_acres_grown, max_acres_grown,
                 max_minus_min_acres_grown, med_acres_grown, min_annual_profit, max_annual_profit,
@@ -696,11 +697,11 @@ def solve_farm(fid: int):
 
     ##### Travis: Lines 468-523 are used to define the ensemble information, which is consolidated in the "cases_df" pandas dataframe
     # Varied parameters for ABM sensitivity
-    hydro_ratio = [1, 1.2] #[0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5]
-    econ_ratio = [1] #[0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5]
-    K_scenario = ['sigma_high'] #['sigma_low', 'half_sigma_low', 'default', 'half_sigma_high', 'sigma_high'] # Stephen added K scenarios. replaced K_val variable 
+    hydro_ratio = [0.7, 1, 1.3] #[0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5]
+    econ_ratio = [0.7, 1, 1.3] #[0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5]
+    K_scenario = ['half_sigma_high', 'sigma_high'] # ['sigma_low', 'half_sigma_low', 'default', 'half_sigma_high', 'sigma_high'] # Stephen added K scenarios & replaced K_val variable 
     K_scenario_dict = dict(sigma_low = 0, half_sigma_low = 1, default = 2, half_sigma_high = 3, sigma_high = 4)
-    gamma_scenario = [1] #[0.8, 0.9, 1, 1.1, 1.2] # Stephen added gamma multiplier scenario values 
+    gamma_scenario = [0.5, 0.75, 1, 1.25, 1.5] #[0.8, 0.9, 1, 1.1, 1.2] # Stephen added gamma multiplier scenario values 
     # m_val = [m] # default in one m from single cost curve as defined in 'Cost curve inputs'
     single_cost_curve = 'false'
 
@@ -710,7 +711,7 @@ def solve_farm(fid: int):
     # farms = [15557, 36335]  #15557 OG (x200y128 - nearly all corn and fodder grass / gw cost 10% net price), 36335 CA (x32y103 - majority misc crop / gw cost 30% net price), 28380  (x273y77 - major oil crop, secondary fiber, corn / gw cost 20% net price)
     # farms = [36335, 15557, 28380]
     farms = [fid]
-    farms = [15557]
+    # farms = [15557]
 
     # Create array of ABM sensitivity parameter combinations using parameter lists defined in 'Varied parameters for ABM sensitivity'
     combinations = len(hydro_ratio) * len(econ_ratio) * len(K_scenario) * len(gamma_scenario) * len(farms)
@@ -962,3 +963,8 @@ if __name__ == '__main__':
         with out_path.open('w') as fp:
             print(f'Farm {fid} failed to solve.')
             print(e, file=fp)
+
+
+plt.plot(Annual_df.Profit[0:99]) 
+plt.ylabel('Annual Profit')
+plt.xlabel("year")

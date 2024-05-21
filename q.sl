@@ -1,11 +1,11 @@
 #!/bin/bash
 
 #SBATCH -A im3
-#SBATCH -N 2
+#SBATCH -N 4
 #SBATCH --ntasks-per-node 1
-#SBATCH -p short
-#SBATCH -t 00:30:00
-#SBATCH --job-name farmwell
+#SBATCH -p slurm
+#SBATCH -t 05:00:00
+#SBATCH --job-name farmbulk
 
 module purge
 module load python/miniconda4.12

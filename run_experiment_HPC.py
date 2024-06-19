@@ -307,7 +307,9 @@ def solve_farm(fid: int, output_path):
         # THAN PROFIT/ACRE THRESHOLD. FLAG WILL SKIP THE PROFIT/AREA CONSTRAINT
         profit_constr = True
         if baseline_profit_per_acre[(baseline_profit_per_acre['NLDAS'] == nldas_id.values[0])]['profit_per_acre'].values[0] < profit_threshold:
-            profit_constr = False 
+            profit_constr = False
+        # profit_constr = False
+        # print(f"\nProfit Constraint: {profit_constr}\n")
         
         # start simulation time loop
         for t in range(no_of_years):
@@ -408,8 +410,8 @@ def solve_farm(fid: int, output_path):
 
             fwm_s.c6 = Constraint(fwm_s.farm_ids, rule=gw_constraint)
                         
-            # MODIFICATION: PROFIT/ACRE CONSTRAINT       
-            if profit_constr == True: 
+            # MODIFICATION: PROFIT/ACRE CONSTRAINT
+            if profit_constr == True:
                 def profit_constraint(fwm_s, ff):
                     return sum(sum((fwm_s.net_prices_total[h] * fwm_s.xs_total[h]/1000 - 0.5 * fwm_s.gammas_total[h] *
                                               fwm_s.xs_total[h]/1000 * fwm_s.xs_total[h]/1000) for h in fwm_s.crop_ids_by_farm[f]) +
@@ -439,19 +441,40 @@ def solve_farm(fid: int, output_path):
             opt = SolverFactory("ipopt", solver_io='nl') # USE this for HPC 
             
             #opt = SolverFactory('gurobi', solver_io='python') # Stephen used for testing 
-            #opt = SolverFactory('appsi_highs')#, solver_io='python')
-            #opt = SolverFactory('asl:highs')#, solver_io='python')
+            # opt = SolverFactory('appsi_highs', solver_io='python')
+            # opt = SolverFactory('asl:highs')#, solver_io='python')
             #opt.options["presolve"] = "on"
             #opt.options["parallel"] = "on"
             #opt.options["solver"] = "simplex"
             #opt.options["simplex_strategy"] = 1
             #pdb.set_trace()
-            #try:
-            results = opt.solve(fwm_s, keepfiles=False, tee=False)
-            #print(results.solver.termination_condition)
+            try:
+                tol = 1e-11
+                results = opt.solve(fwm_s, keepfiles=False, tee=False, options={
+                    'constr_viol_tol': tol,
+                    'max_iter': 3000,
+                })
+                #print(results.solver.termination_condition)
 
-            # except ValueError:
-            #   continue
+            except:
+                try:
+                    tol = 1e-6
+                    results = opt.solve(fwm_s, keepfiles=False, tee=False, options={
+                        'constr_viol_tol': tol,
+                        'max_iter': 3000,
+                    })
+
+                except:
+                    bad_res = list(np.full(61, np.nan))
+                    for i in np.arange(24,61):
+                        bad_res[i] = [np.nan]
+                    bad_res[24] = [farm_id]
+                    bad_res[25] = [hydro_ratio]
+                    bad_res[26] = [econ_ratio]
+                    bad_res[28] = [K_scenario]
+                    bad_res[58] = [gamma_scenario]
+                    bad_res[60] = tol
+                    return bad_res
 
             # store main model outputs
             result_xs_sw = dict(fwm_s.xs_sw.get_values())
@@ -767,10 +790,18 @@ def solve_farm(fid: int, output_path):
                 Area_GW_OilCrop, Area_SW_OilCrop, Area_GW_OtherGrain, Area_SW_OtherGrain, 
                 Area_GW_Rice, Area_SW_Rice, Area_GW_Root_Tuber, Area_SW_Root_Tuber, 
                 Area_GW_SugarCrop, Area_SW_SugarCrop, Area_GW_Wheat, Area_SW_Wheat,
-                Area_GW_total, Area_SW_total, Gamma_mult, S_values]
+                Area_GW_total, Area_SW_total, Gamma_mult, S_values, tol]
                 
 
     ##### Travis: Lines 468-523 are used to define the ensemble information, which is consolidated in the "cases_df" pandas dataframe
+    # hydro_ratio = [1]
+    # econ_ratio = [1]
+    # K_scenario = ['sigma_high']
+    # K_scenario_dict = dict(sigma_high=4)
+    # gamma_scenario = [1]
+    # single_cost_curve = 'false'
+
+    
     # Varied parameters for ABM sensitivity
     hydro_ratio = [0.7, 1, 1.3] #[0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5]
     econ_ratio = [0.7, 1, 1.3] #[0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5]
@@ -857,6 +888,7 @@ def solve_farm(fid: int, output_path):
     Area_SW_total = []
     Gamma_mult  = []
     S_value = []
+    tol = []
     
     ### Travis - this is where we start the simulations, looping through every case in the cases_df dataframe
     ### Simulate parameter combinations over all selected farms
@@ -894,6 +926,7 @@ def solve_farm(fid: int, output_path):
         mean_excl0_gw_vol_yr.append(results[21])
         Final_WL.append(results[22])
         Total_increase_GW_cost.append(results[23])
+        tol.append(results[60])
         
         # Stephen - Output arrays for Annual values 
         try:
@@ -964,6 +997,7 @@ def solve_farm(fid: int, output_path):
     cases_df['mean_excl0_gw_vol_yr'] = mean_excl0_gw_vol_yr
     cases_df['final_WL'] = Final_WL
     cases_df['Total_increase_GW_cost'] = Total_increase_GW_cost
+    cases_df['constraint_tolerance'] = tol
 
     # Stephen Added - Save results from the annual outputs to a DataFrame
     Annual_df['Farm_id'] = Farm_id
@@ -1004,8 +1038,8 @@ def solve_farm(fid: int, output_path):
     Annual_df['S_value'] =  S_value
     
     ##### Travis: And export to csv. For each farm (~50k), we will have 121 scenarios, and for each farm/scenario ~30 results that are stored (~180M values)
-    cases_df.to_csv(f'{output_path}/farm_{fid}_cases.csv')
-    Annual_df.to_csv(f'{output_path}/farm_{fid}_annual.csv') # Stephen added 
+    cases_df.to_csv(f'{output_path}/farm_{fid}_cases.csv', index=False)
+    Annual_df.to_csv(f'{output_path}/farm_{fid}_annual.csv', index=False) # Stephen added 
 
     time_to_solve = timer() - time_start
     print(f'Farm {fid} solved in {pretty_timer(time_to_solve)}.')

@@ -14,6 +14,8 @@ Abstract: Groundwater resources are essential for crop production, enabling irri
 5. **Aquifer Depth** de Graaf, Inge, Laura Condon, and Reed Maxwell. "Hyper‐resolution continental‐scale 3‐D aquifer parameterization for groundwater modeling." Water Resources Research 56.5 (2020): e2019WR026004. 
 6. **Depth to Bedrock** Shangguan, Wei, et al. "Mapping the global depth to bedrock for land surface modeling." Journal of Advances in Modeling Earth Systems 9.1 (2017): 65-88.
 
+Inputs [2] through [6] were geoprocessed to produce the groundwater cost curve input datset 'NLDAS_Cost_Curve_Attributes.csv'. Input [1], the geospatial datasets, and 'NLDAS_Cost_Curve_Attributes.csv' are available at: Yoon, J., Ferencz, S. (2025). Name for Data Repo (Version v1) [Data set]. MSD-LIVE Data Repository. DOI 
+
 ### Output Data 
 Yoon, J., Ferencz, S. (2025). Name for Data Repo (Version v1) [Data set]. MSD-LIVE Data Repository. DOI  
 

@@ -7,14 +7,14 @@ Jim Yoon <sup>1</sup>, Stephen B. Ferencz <sup>1</sup>, Travis Thurber <sup>1</s
 Abstract: Groundwater resources are essential for crop production, enabling irrigation in many arid regions of the world. With a growing dependence on groundwater, concerns have been raised regarding alarming rates of groundwater depletion at the global scale. Modeling efforts focused on projecting future groundwater depletion have been limited by key factors: exogenous assumptions of human demand for groundwater that are irresponsive to changing groundwater availability and cost, simplistic treatment of the physics of groundwater depletion, narrow application to localized contexts, and limited exploration of future uncertainties. To address these gaps, we introduce a new modeling approach for process-rich, broad-exploration of groundwater depletion futures, initially deployed for the continental United States. Our results indicate persistent groundwater depletion across a range of hydrologic-economic futures, with many of the key agricultural regions of the U.S. encountering substantial depletion even in the absence of adverse hydrologic or economic change.
 
 ### Input Data 
-X. **Farm agent based model (ABM) inputs**. 
-X. **Hi res land cover**. Coleman, Red Willow (2020), “Southern California 60-cm Urban Land Cover Classification ”, Mendeley Data, V1, doi: 10.17632/zykyrtg36g.1
+1. **Farm agent based model (ABM) inputs**. 
+2. **Hi res land cover**. Coleman, Red Willow (2020), “Southern California 60-cm Urban Land Cover Classification ”, Mendeley Data, V1, doi: 10.17632/zykyrtg36g.1
 
 ### Output Data 
-x.  Yoon, J., Ferencz, S. (2025). Name for Data Repo (Version v1) [Data set]. MSD-LIVE Data Repository. DOI
+3.  Yoon, J., Ferencz, S. (2025). Name for Data Repo (Version v1) [Data set]. MSD-LIVE Data Repository. DOI
 
 ## Code Reference 
-x. Code for Executing the processing and analysis steps in "Reproduce my Experiment" provided in the `workflow` folder on this meta-repository. The scripts are named by their corresponding "Reproduce my Experiment" step. Yoon, J., Ferencz, S., and Thurber, T. (2025). Name for Code Repo (Version X.X). Zenodo. DOI 
+Code for Executing the processing and analysis steps in "Reproduce my Experiment" provided in the `workflow` folder on this meta-repository. Yoon, J., Ferencz, S., and Thurber, T. (2025). Name for Code Repo (Version X.X). Zenodo. DOI 
 
 ## Contributing Modeling Software 
 Standard Python Packages along with the Pyomo package (https://www.pyomo.org/). Pyomo is a Python-based, open-source optimization modeling language.

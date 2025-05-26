@@ -8,7 +8,11 @@ Abstract: Groundwater resources are essential for crop production, enabling irri
 
 ### Input Data 
 1. **Farm agent based model (ABM) inputs**. 
-2. **Hi res land cover**. Coleman, Red Willow (2020), “Southern California 60-cm Urban Land Cover Classification ”, Mendeley Data, V1, doi: 10.17632/zykyrtg36g.1
+2. **Water Table Depth**.
+3. **Porosity and Permeabilty**.
+4. **Recharge**.
+5. **Aquifer Depth**
+6. **Depth to Bedrock** 
 
 ### Output Data 
 3.  Yoon, J., Ferencz, S. (2025). Name for Data Repo (Version v1) [Data set]. MSD-LIVE Data Repository. DOI

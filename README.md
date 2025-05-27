@@ -23,10 +23,10 @@ Yoon, J., Ferencz, S. (2025). Name for Data Repo (Version v1) [Data set]. MSD-LI
 Code for Executing the processing and analysis steps in "Reproduce my Experiment" provided in the `workflow` folder on this meta-repository. Yoon, J., Ferencz, S., and Thurber, T. (2025). Name for Code Repo (Version X.X). Zenodo. DOI 
 
 ## Contributing Modeling Software 
--Standard Python Packages along with the Pyomo package (https://www.pyomo.org/). Pyomo is a Python-based, open-source optimization modeling language.  
--IPOPT (https://coin-or.github.io/Ipopt/). Ipopt (Interior Point Optimizer) is an open source software package for large-scale nonlinear optimization.   
--QGIS (https://qgis.org/) is open-source software for geospatial processing and visualization.   
--Superwell V1.1 (https://zenodo.org/records/14583794). Modified version of the Supwerwell V1.1 Python code is used to generate the groundwater cost curves.   
+- Standard Python Packages along with the Pyomo package (https://www.pyomo.org/). Pyomo is a Python-based, open-source optimization modeling language.  
+- IPOPT (https://coin-or.github.io/Ipopt/). Ipopt (Interior Point Optimizer) is an open source software package for large-scale nonlinear optimization.   
+- QGIS (https://qgis.org/) is open-source software for geospatial processing and visualization.   
+- Superwell V1.1 (https://zenodo.org/records/14583794). Modified version of the Supwerwell V1.1 Python code is used to generate the groundwater cost curves.   
 
 ## Recreate my experiment 
 # creating the environment:
@@ -46,10 +46,10 @@ Code for Executing the processing and analysis steps in "Reproduce my Experiment
 - results and errors are written to `./output` directory per farm
 
 # groundwater farm ABM ensemble 
-- Run Python file 'run_experiment_HPC_Yoon_et_al_2025.py' in a directory that has `Superwell_for_ABM_on_the_fly_final.py`, `NLDAS_Cost_Curve_Attributes.csv`, `Theis_well_function_table.csv`, and the `data_inputs` folder. In this study, `run_experiment_HPC_Yoon_et_al_2025.py` was parallelized on HPC resources. The farm ids and corresponding NLDAS ids that were simulated are in `nldas_farms_subset_final.csv` located in the `data_inputs` folder. 
+- Run 'run_experiment_HPC_Yoon_et_al_2025.py' in a directory that has `Superwell_for_ABM_on_the_fly_final.py`, `NLDAS_Cost_Curve_Attributes.csv`, `Theis_well_function_table.csv`, and the `data_inputs` folder. In this study, `run_experiment_HPC_Yoon_et_al_2025.py` was parallelized on HPC resources. The farm ids and corresponding NLDAS ids that were simulated are in `nldas_farms_subset_final.csv` located in the `data_inputs` folder. 
 
 # processing output files 
-- use
+- Run 'farm_abm_HPC_postprocessing_final.py' in the directory or path set to the 'Raw_output' folder that can be downloaded from **Output data**. This aggregates the 35,000 ouput files into two files, one that has the scenario settings and the other that has fraction depletion "Perc vol depleted" for every farm cell, for every scenario. These two files were concatenated to produce 'depletion_results_conus.csv' used for the analysis presented in the paper. 
 
 # reproduce my figures 
 - Figure 1

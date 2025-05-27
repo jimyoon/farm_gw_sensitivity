@@ -46,7 +46,7 @@ Code for Executing the processing and analysis steps in "Reproduce my Experiment
 - results and errors are written to `./output` directory per farm
 
 # groundwater farm ABM ensemble 
-- Run Python file 'run_experiment_HPC_Yoon_et_al_2025.py' in a directory that has 'Superwell_for_ABM_on_the_fly_final.py', 'NLDAS_Cost_Curve_Attributes.csv'. 'Theis_well_function_table.csv', and the 'data_inputs' folder. In this study, 'run_experiment_HPC_Yoon_et_al_2025.py' was parallelized on HPC resources. The farm ids and corresponding NLDAS ids that were simulated are in 'nldas_farms_subset_final.csv' located in the 'data_inputs' folder. 
+- Run Python file 'run_experiment_HPC_Yoon_et_al_2025.py' in a directory that has `Superwell_for_ABM_on_the_fly_final.py`, `NLDAS_Cost_Curve_Attributes.csv`, `Theis_well_function_table.csv`, and the `data_inputs` folder. In this study, `run_experiment_HPC_Yoon_et_al_2025.py` was parallelized on HPC resources. The farm ids and corresponding NLDAS ids that were simulated are in `nldas_farms_subset_final.csv` located in the `data_inputs` folder. 
 
 # processing output files 
 - use

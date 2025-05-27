@@ -49,7 +49,7 @@ Code for Executing the processing and analysis steps in "Reproduce my Experiment
 - Run 'run_experiment_HPC_Yoon_et_al_2025.py' in a directory that has `Superwell_for_ABM_on_the_fly_final.py`, `NLDAS_Cost_Curve_Attributes.csv`, `Theis_well_function_table.csv`, and the `data_inputs` folder. In this study, `run_experiment_HPC_Yoon_et_al_2025.py` was parallelized on HPC resources. The farm ids and corresponding NLDAS ids that were simulated are in `nldas_farms_subset_final.csv` located in the `data_inputs` folder. 
 
 # processing output files 
-- Run 'farm_abm_HPC_postprocessing_final.py' in the directory or path set to the 'Raw_output' folder that can be downloaded from **Output data**. This aggregates the 35,000 ouput files into two files, one that has the scenario settings and the other that has fraction depletion "Perc vol depleted" for every farm cell, for every scenario. These two files were concatenated to produce 'depletion_results_conus.csv' used for the analysis presented in the paper. 
+- Run `farm_abm_HPC_postprocessing_final.py` in the directory or path set to the 'Raw_output' folder that can be downloaded from **Output data**. This aggregates the 35,000 ouput files into two files, one that has the scenario settings and the other that has fraction depletion "Perc vol depleted" for every farm cell, for every scenario. These two files were concatenated to produce `depletion_results_conus.csv` used for the analysis presented in the paper, available from **Output data** in the folder 'derived_depletion_outcomes_from_raw_outputs'. 
 
 # reproduce my figures 
 - Figure 1

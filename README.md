@@ -14,7 +14,7 @@ Abstract: Groundwater resources are essential for crop production, enabling irri
 5. **Aquifer Depth** de Graaf, Inge, Laura Condon, and Reed Maxwell. "Hyper‐resolution continental‐scale 3‐D aquifer parameterization for groundwater modeling." Water Resources Research 56.5 (2020): e2019WR026004. 
 6. **Depth to Bedrock** Shangguan, Wei, et al. "Mapping the global depth to bedrock for land surface modeling." Journal of Advances in Modeling Earth Systems 9.1 (2017): 65-88.
 
-Inputs [2] through [6] were geoprocessed to produce the groundwater cost curve input datset 'NLDAS_Cost_Curve_Attributes.csv'. Input [1], the geospatial datasets, and 'NLDAS_Cost_Curve_Attributes.csv' are available at: Yoon, J., Ferencz, S. (2025). Name for Data Repo (Version v1) [Data set]. MSD-LIVE Data Repository. DOI 
+Inputs [2] through [6] were geoprocessed in QGIS to produce the groundwater cost curve input datset 'NLDAS_Cost_Curve_Attributes.csv'. Input [1], the geospatial datasets, and 'NLDAS_Cost_Curve_Attributes.csv' are available at: Yoon, J., Ferencz, S. (2025). Name for Data Repo (Version v1) [Data set]. MSD-LIVE Data Repository. DOI 
 
 ### Output Data 
 Yoon, J., Ferencz, S. (2025). Name for Data Repo (Version v1) [Data set]. MSD-LIVE Data Repository. DOI  
@@ -25,7 +25,7 @@ Code for Executing the processing and analysis steps in "Reproduce my Experiment
 ## Contributing Modeling Software 
 -Standard Python Packages along with the Pyomo package (https://www.pyomo.org/). Pyomo is a Python-based, open-source optimization modeling language.  
 -IPOPT (https://coin-or.github.io/Ipopt/). Ipopt (Interior Point Optimizer) is an open source software package for large-scale nonlinear optimization.   
--QGIS (https://qgis.org/) for geospatial processing and visualization.   
+-QGIS (https://qgis.org/) is open-source software for geospatial processing and visualization.   
 -Superwell V1.1 (https://zenodo.org/records/14583794). Modified version of the Supwerwell V1.1 Python code is used to generate the groundwater cost curves.   
 
 ## Recreate my experiment 
@@ -46,7 +46,7 @@ Code for Executing the processing and analysis steps in "Reproduce my Experiment
 - results and errors are written to `./output` directory per farm
 
 # groundwater farm ABM ensemble 
-- input files 
+- Run Python file 'run_experiment_HPC_Yoon_et_al_2025.py' in a directory that has 'Superwell_for_ABM_on_the_fly_final.py', 'NLDAS_Cost_Curve_Attributes.csv'. 'Theis_well_function_table.csv', and the 'data_inputs' folder. In this study, 'run_experiment_HPC_Yoon_et_al_2025.py' was parallelized on HPC resources. The farm ids and corresponding NLDAS ids that were simulated are in 'nldas_farms_subset_final.csv' located in the 'data_inputs' folder. 
 
 # processing output files 
 - use

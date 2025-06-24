@@ -22,11 +22,24 @@ Yoon, J., Ferencz, S. (2025). Name for Data Repo (Version v1) [Data set]. MSD-LI
 ## Code Reference 
 Code for Executing the processing and analysis steps in "Reproduce my Experiment" provided in the `workflow` folder on this meta-repository. Yoon, J., Ferencz, S., and Thurber, T. (2025). Name for Code Repo (Version X.X). Zenodo. DOI 
 
-## Contributing Modeling Software 
-- Standard Python Packages along with the Pyomo package (https://www.pyomo.org/). Pyomo is a Python-based, open-source optimization modeling language.  
+## Contributing Modeling Software
+- Anaconda Python Distribution (https://www.anaconda.com/download) along with the Pyomo package (https://www.pyomo.org/). Pyomo is a Python-based, open-source optimization modeling language.  
 - IPOPT (https://coin-or.github.io/Ipopt/). Ipopt (Interior Point Optimizer) is an open source software package for large-scale nonlinear optimization.   
 - QGIS (https://qgis.org/) is open-source software for geospatial processing and visualization.   
-- Superwell V1.1 (https://zenodo.org/records/14583794). Modified version of the Supwerwell V1.1 Python code is used to generate the groundwater cost curves.   
+- Superwell V1.1 (https://zenodo.org/records/14583794). Modified version of the Supwerwell V1.1 Python code is used to generate the groundwater cost curves.
+
+## System requirements
+- The code has been tested on a local machine running Python 3.2.17 and Anaconda distribution version 24.11.3. 
+- The farm’s optimization problem is defined in Python using the Pyomo package (tested on version 6.4.4) and solved using the IPOPT solver (tested using version 3.14.17).
+- For the ensemble of simulations presented in this manuscript, the model is deployed in batch mode on PNNL’s Deception high performance computing cluster.
+
+## Installation
+- The model can be run by installing the Python/Anaconda distribution indicated above, and additionally installing the Pyomo package in Python and the IPOPT solver, which are all freely available at the links above (contributing modeling software)
+
+## Demo
+- The "farms_gw_future_3Dsurface.py” file in the code Github repository provides a script that can be run locally to test the model.
+- A run for a single farm-scenario combination will take a few minutes (including the overhead of loading the complete input datasets).
+- The final output of the script will be a CSV file containing results from the farm-groundwater model run.
 
 ## Recreate my experiment 
 # creating the environment:

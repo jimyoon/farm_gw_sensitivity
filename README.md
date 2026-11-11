@@ -1,4 +1,4 @@
-# Yoon_et_al_2025_ERW
+# Yoon_et_al_2026_ERW
 
 ## The persistence of groundwater depletion in the United States across widely ranging futures
 Jim Yoon <sup>1</sup>, Stephen B. Ferencz <sup>1</sup>, Travis Thurber <sup>1</sup> 

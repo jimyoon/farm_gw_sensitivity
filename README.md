@@ -14,10 +14,10 @@ Abstract: Groundwater resources are essential for crop production, enabling irri
 5. **Aquifer Depth** de Graaf, Inge, Laura Condon, and Reed Maxwell. "Hyper‐resolution continental‐scale 3‐D aquifer parameterization for groundwater modeling." Water Resources Research 56.5 (2020): e2019WR026004. 
 6. **Depth to Bedrock** Shangguan, Wei, et al. "Mapping the global depth to bedrock for land surface modeling." Journal of Advances in Modeling Earth Systems 9.1 (2017): 65-88.
 
-Inputs [2] through [6] were geoprocessed in QGIS to produce the groundwater cost curve input datset 'NLDAS_Cost_Curve_Attributes.csv'. Input [1], the geospatial datasets, and 'NLDAS_Cost_Curve_Attributes.csv' are available at: Yoon, J., Ferencz, S. (2025). Name for Data Repo (Version v1) [Data set]. MSD-LIVE Data Repository. DOI 
+Inputs [2] through [6] were geoprocessed in QGIS to produce the groundwater cost curve input datset 'NLDAS_Cost_Curve_Attributes.csv'. Input [1], the geospatial datasets, and 'NLDAS_Cost_Curve_Attributes.csv' are available at: Yoon, J., Ferencz, S. (2025). Integrated GW Farm ABM (Version v1) https://data.msdlive.org/records/bs15v-tnb83. MSD-LIVE Data Repository. https://doi.org/10.57931/2565944.
 
 ### Output Data 
-Yoon, J., Ferencz, S. (2025). Name for Data Repo (Version v1) [Data set]. MSD-LIVE Data Repository. DOI  
+Yoon, J., Ferencz, S. (2025). Integrated GW Farm ABM (Version v1). MSD-LIVE Data Repository. https://doi.org/10.57931/2565944.  
 
 ## Code Reference 
 Code for Executing the processing and analysis steps in "Reproduce my Experiment" provided in the `workflow` folder on this meta-repository. Yoon, J., Ferencz, S., and Thurber, T. (2025). Name for Code Repo (Version X.X). Zenodo. DOI 
@@ -62,10 +62,4 @@ Code for Executing the processing and analysis steps in "Reproduce my Experiment
 - Run 'run_experiment_HPC_Yoon_et_al_2025.py' in a directory that has `Superwell_for_ABM_on_the_fly_final.py`, `NLDAS_Cost_Curve_Attributes.csv`, `Theis_well_function_table.csv`, and the `data_inputs` folder. In this study, `run_experiment_HPC_Yoon_et_al_2025.py` was parallelized on HPC resources. The farm ids and corresponding NLDAS ids that were simulated are in `nldas_farms_subset_final.csv` located in the `data_inputs` folder. 
 
 # processing output files 
-- Run `farm_abm_HPC_postprocessing_final.py` in the directory or path set to the 'Raw_output' folder that can be downloaded from **Output data**. This aggregates the 35,000 ouput files into two files, one that has the scenario settings and the other that has fraction depletion "Perc vol depleted" for every farm cell, for every scenario. These two files were concatenated to produce `depletion_results_conus.csv` used for the analysis presented in the paper, available from **Output data** in the folder 'derived_depletion_outcomes_from_raw_outputs'. 
-
-# reproduce my figures 
-- Figure 1
-- Figure 2
-- Figure 3
-- Figure 4 
+- Run `farm_abm_HPC_postprocessing_final.py` in the directory or path set to the 'Raw_output' folder that can be downloaded from **Output data**. This aggregates the 35,000 ouput files into two files, one that has the scenario settings and the other that has fraction depletion "Perc vol depleted" for every farm cell, for every scenario. These two files were concatenated to produce `depletion_results_conus.csv` used for the analysis presented in the paper, available from **Output data** in the folder 'derived_depletion_outcomes_from_raw_outputs'.
